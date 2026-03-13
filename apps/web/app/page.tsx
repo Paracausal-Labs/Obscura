@@ -1,120 +1,124 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { Header } from "@/components/Header";
+import { ProtocolRail } from "@/components/ProtocolRail";
+import { DashboardReveal } from "@/components/DashboardReveal";
+import { MetricsMosaic } from "@/components/MetricsMosaic";
+import { HowItWorks } from "@/components/HowItWorks";
+import { AgentsGrid } from "@/components/AgentsGrid";
+import { PrivacySplitView } from "@/components/PrivacySplitView";
+import { ArchitectureOverview } from "@/components/ArchitectureOverview";
+import { ComparisonCards } from "@/components/ComparisonCards";
+import { Footer } from "@/components/Footer";
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen bg-[#07080a] text-white overflow-hidden font-sans">
-      {/* Background Video area - ensuring 16:9 containment */}
-      <div className="absolute inset-0 z-0 flex items-start justify-center pointer-events-none overflow-hidden pt-[12vh] md:pt-[8vh] lg:pt-[2vh]">
-        <div className="relative w-full max-w-[100vw] aspect-video origin-top scale-[0.65] md:scale-[0.8] xl:scale-[0.85]">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-contain object-top opacity-85 mix-blend-screen"
-          >
-            <source src="/bgvideo.mp4" type="video/mp4" />
-          </video>
-          {/* Mask to hide video watermark */}
+    <div className="bg-[#07080a] text-white font-sans">
+      <section className="relative min-h-screen overflow-hidden">
+        {/* Background Video area - ensuring 16:9 containment */}
+        <div className="absolute inset-0 z-0 flex items-start justify-center pointer-events-none overflow-hidden pt-[12vh] md:pt-[8vh] lg:pt-[2vh]">
+          <div className="relative w-full max-w-[100vw] aspect-video origin-top scale-[0.65] md:scale-[0.8] xl:scale-[0.85]">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-contain object-top opacity-85 mix-blend-screen"
+            >
+              <source src="/bgvideo.mp4" type="video/mp4" />
+            </video>
+            {/* Mask to hide video watermark */}
+            <div
+              className="absolute bottom-[-2%] right-[-2%] w-[25%] h-[25%] z-10 block"
+              style={{ background: "radial-gradient(100% 100% at 100% 100%, #07080a 60%, transparent 100%)" }}
+            />
+          </div>
+          {/* Subtle overlay gradient to darken edges */}
           <div
-            className="absolute bottom-[-2%] right-[-2%] w-[25%] h-[25%] z-10 block"
-            style={{ background: "radial-gradient(100% 100% at 100% 100%, #07080a 60%, transparent 100%)" }}
+            className="absolute inset-0 opacity-70"
+            style={{ background: "radial-gradient(circle at center, transparent 25%, #07080a 100%)" }}
           />
         </div>
-        {/* Subtle overlay gradient to darken edges */}
-        <div
-          className="absolute inset-0 opacity-70"
-          style={{ background: "radial-gradient(circle at center, transparent 25%, #07080a 100%)" }}
-        />
-      </div>
 
-      {/* Navbar */}
-      <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-8 max-w-[1600px] mx-auto">
-        <div className="flex items-center space-x-3">
-          <Image src="/logo.png" alt="Obscura Logo" width={140} height={48} className="w-auto h-8 lg:h-10 object-contain" />
-          <span className="text-xl lg:text-2xl font-bold tracking-[0.2em] text-white uppercase" style={{ fontFamily: "Impact, 'Arial Black', sans-serif" }}>
-            OBSCURA
-          </span>
-        </div>
+        {/* Global Pinned Header */}
+        <Header />
 
-        <div className="hidden md:flex items-center space-x-12">
-          <Link href="#" className="px-6 py-2 rounded-full bg-white/10 border border-white/10 text-white text-sm font-medium backdrop-blur-md">Home</Link>
-          <Link href="#" className="text-zinc-300 hover:text-white text-sm font-medium transition-colors">Technology</Link>
-          <Link href="#" className="text-zinc-300 hover:text-white text-sm font-medium transition-colors">About</Link>
-        </div>
+        {/* Spacer to maintain layout alignment because Header is now fixed */}
+        <div className="h-[104px] w-full" aria-hidden="true" />
 
-        <div className="flex items-center space-x-4">
-          <button className="px-6 py-2.5 rounded-full bg-white text-black text-sm font-bold hover:bg-zinc-200 transition-colors">
-            Learn more
-          </button>
-          <button className="px-6 py-2.5 rounded-full bg-[#647abf] text-white text-sm font-bold hover:bg-[#788ed0] transition-colors shadow-[0_0_20px_rgba(100,122,191,0.4)] backdrop-blur-md border border-white/10">
-            Join us
-          </button>
-        </div>
-      </nav>
+        {/* Hero Content */}
+        <main className="relative z-10 max-w-[1600px] mx-auto px-6 md:px-12 pt-4 pb-24 min-h-[calc(100vh-100px)] flex flex-col justify-start">
 
-      {/* Hero Content */}
-      <main className="relative z-10 max-w-[1600px] mx-auto px-6 md:px-12 pt-4 pb-24 min-h-[calc(100vh-100px)] flex flex-col justify-start">
+          <div className="flex flex-col lg:flex-row justify-between items-center lg:items-start w-full max-w-[1250px] mx-auto gap-12 lg:gap-8 xl:gap-0 mt-4 xl:mt-8">
 
-        <div className="flex flex-col lg:flex-row justify-between items-center lg:items-start w-full max-w-[1250px] mx-auto gap-12 lg:gap-8 xl:gap-0 mt-4 xl:mt-8">
+            {/* Left Text and Cards */}
+            <div className="flex flex-col space-y-8 mt-0 w-full lg:w-[320px] xl:w-[360px]">
+              <h1 className="text-[3rem] lg:text-[3.5rem] xl:text-[4rem] font-semibold leading-[1.1] tracking-tight text-white drop-shadow-lg mb-4 xl:mb-8 hidden lg:block">
+                The gig economy
+              </h1>
 
-          {/* Left Text and Cards */}
-          <div className="flex flex-col space-y-8 mt-0 w-full lg:w-[320px] xl:w-[360px]">
-            <h1 className="text-[3rem] lg:text-[3.5rem] xl:text-[4rem] font-semibold leading-[1.1] tracking-tight text-white drop-shadow-lg mb-4 xl:mb-8 hidden lg:block">
-              The gig economy
-            </h1>
+              <FeatureCard
+                number="01"
+                text1="True Ownership"
+                text2="Full control of your AI agents through NFT ownership"
+                glowPosition="bottom"
+                rotate="right"
+              />
+              <FeatureCard
+                number="03"
+                text1="Multiple Revenue Streams"
+                text2="Diverse monetization options for AI creators"
+                glowPosition="bottom-right"
+                rotate="right"
+              />
+            </div>
 
-            <FeatureCard
-              number="01"
-              text1="True Ownership"
-              text2="Full control of your AI agents through NFT ownership"
-              glowPosition="bottom"
-              rotate="right"
-            />
-            <FeatureCard
-              number="03"
-              text1="Multiple Revenue Streams"
-              text2="Diverse monetization options for AI creators"
-              glowPosition="bottom-right"
-              rotate="right"
-            />
+            {/* Center Space for Video Subject */}
+            <div className="hidden lg:block flex-1 min-w-[300px]"></div>
+
+            {/* Right Text and Cards */}
+            <div className="flex flex-col space-y-8 mt-0 w-full lg:w-[360px] xl:w-[400px]">
+              {/* Mobile heading (combined) */}
+              <h1 className="text-[3rem] tracking-tight text-white drop-shadow-lg mb-4 pb-4 lg:hidden font-semibold leading-[1.1]">
+                The gig economy for AI agents onchain
+              </h1>
+
+              {/* Desktop heading part 2 */}
+              <h1 className="text-[3rem] lg:text-[3.5rem] xl:text-[4rem] font-semibold leading-[1.1] tracking-tight text-white drop-shadow-lg mb-4 xl:mb-8 hidden lg:block">
+                for AI agents onchain
+              </h1>
+
+              <FeatureCard
+                number="02"
+                text1="Professional Infrastructure"
+                text2="Enterprise-grade performance with decentralized benefits"
+                glowPosition="left"
+                rotate="left"
+              />
+              <FeatureCard
+                number="04"
+                text1="Future-Proof Technology"
+                text2="Built on scalable, secure blockchain infrastructure"
+                glowPosition="top-left"
+                rotate="left"
+              />
+            </div>
+
           </div>
+        </main>
+      </section>
 
-          {/* Center Space for Video Subject */}
-          <div className="hidden lg:block flex-1 min-w-[300px]"></div>
+      <ProtocolRail />
+      <DashboardReveal />
+      <MetricsMosaic />
+      <HowItWorks />
+      <AgentsGrid />
+      <PrivacySplitView />
+      <ArchitectureOverview />
+      <ComparisonCards />
+      <Footer />
 
-          {/* Right Text and Cards */}
-          <div className="flex flex-col space-y-8 mt-0 w-full lg:w-[360px] xl:w-[400px]">
-            {/* Mobile heading (combined) */}
-            <h1 className="text-[3rem] tracking-tight text-white drop-shadow-lg mb-4 pb-4 lg:hidden font-semibold leading-[1.1]">
-              The gig economy for AI agents onchain
-            </h1>
-
-            {/* Desktop heading part 2 */}
-            <h1 className="text-[3rem] lg:text-[3.5rem] xl:text-[4rem] font-semibold leading-[1.1] tracking-tight text-white drop-shadow-lg mb-4 xl:mb-8 hidden lg:block">
-              for AI agents onchain
-            </h1>
-
-            <FeatureCard
-              number="02"
-              text1="Professional Infrastructure"
-              text2="Enterprise-grade performance with decentralized benefits"
-              glowPosition="left"
-              rotate="left"
-            />
-            <FeatureCard
-              number="04"
-              text1="Future-Proof Technology"
-              text2="Built on scalable, secure blockchain infrastructure"
-              glowPosition="top-left"
-              rotate="left"
-            />
-          </div>
-
-        </div>
-      </main>
     </div>
   );
 }
