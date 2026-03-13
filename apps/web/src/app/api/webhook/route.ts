@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { getEnsText } from "@/lib/integrations/ens";
 
@@ -16,7 +16,9 @@ export async function POST(req: Request) {
     const signature = req.headers.get("x-bitgo-signature") || "";
     const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
 
-    if (signature !== expected) {
+    const sigBuf = Buffer.from(signature, "utf8");
+    const expBuf = Buffer.from(expected, "utf8");
+    if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
       return NextResponse.json(
         { error: "Invalid signature" },
         { status: 401 }
