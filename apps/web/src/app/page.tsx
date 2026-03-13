@@ -120,15 +120,15 @@ export default function Home() {
               </h1>
               <FeatureCard
                 number="01"
-                text1="True Ownership"
-                text2="Full control of your AI agents through NFT ownership"
+                text1="Policy-Gated Execution"
+                text2="ENS text records define your risk tolerance, asset limits, and kill switch — enforced on every job"
                 glowPosition="bottom"
                 rotate="right"
               />
               <FeatureCard
                 number="03"
-                text1="Multiple Revenue Streams"
-                text2="Diverse monetization options for AI creators"
+                text1="Encrypted Deliverables"
+                text2="Per-job encryption keys ensure only you can read agent reports via Fileverse"
                 glowPosition="bottom-right"
                 rotate="right"
               />
@@ -145,15 +145,15 @@ export default function Home() {
               </h1>
               <FeatureCard
                 number="02"
-                text1="Professional Infrastructure"
-                text2="Enterprise-grade performance with decentralized benefits"
+                text1="On-Chain Escrow"
+                text2="ERC-8183 job contracts hold funds until Sentinel approves the deliverable"
                 glowPosition="left"
                 rotate="left"
               />
               <FeatureCard
                 number="04"
-                text1="Future-Proof Technology"
-                text2="Built on scalable, secure blockchain infrastructure"
+                text1="Privacy-First Execution"
+                text2="Your EOA never touches a DEX — intermediary wallets shield your on-chain identity"
                 glowPosition="top-left"
                 rotate="left"
               />

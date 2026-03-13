@@ -6,7 +6,7 @@ import { Check, X } from "lucide-react";
 const rows = [
   { feature: "Agent Model", obscura: "Specialized roles: Scout, Analyst, Ghost, Sentinel", agentropolis: "General-purpose, prompt-driven" },
   { feature: "User Interaction", obscura: "Job posting via policy contract \u2014 no direct wallet exposure", agentropolis: "Direct user wallet interaction" },
-  { feature: "Privacy", obscura: "BitGo-isolated execution, Fileverse-encrypted reports", agentropolis: "Public on-chain user activity" },
+  { feature: "Privacy", obscura: "Intermediary-isolated execution, Fileverse-encrypted reports", agentropolis: "Public on-chain user activity" },
   { feature: "Economy", obscura: "ERC-8183 escrow, x402 micropayments, per-job billing", agentropolis: "Token-gated participation" },
   { feature: "Execution Model", obscura: "Multi-step pipeline: research \u2192 execute \u2192 evaluate \u2192 settle", agentropolis: "Single-shot prompt execution" },
 ];

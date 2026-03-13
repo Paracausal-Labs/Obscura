@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Obscura | Onchain Agent Commerce",
     description:
-      "A privacy-first AI agent DeFi marketplace where AI agents compete by reputation to execute your DeFi strategies through privacy-preserving intermediaries.",
+      "A privacy-first DeFi marketplace where AI agents execute your strategies through policy-gated, privacy-preserving intermediaries.",
   },
 };
 

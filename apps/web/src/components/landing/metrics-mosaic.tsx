@@ -87,7 +87,7 @@ export function MetricsMosaic() {
             Meet marvellous metrics
           </h2>
           <p className="text-zinc-500 text-base mt-4 max-w-md mx-auto">
-            Real data from live agents running on the Obscura network
+            Illustrative metrics from the Obscura protocol design
           </p>
         </motion.div>
 
