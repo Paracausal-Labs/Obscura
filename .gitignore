@@ -1,0 +1,23 @@
+node_modules/
+.next/
+dist/
+.turbo/
+.env
+.env.local
+.env*.local
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/lib/
+
+# Fileverse
+creds/
+
+# OS
+.DS_Store
+*.swp
+
+# IDE
+.vscode/
+.idea/
