@@ -136,6 +136,9 @@ export async function POST(req: Request) {
       status: result.sentinelResult.success ? "completed" : "rejected",
       agentRole: result.assignedRole,
       score: result.sentinelResult.metadata.reasoning,
+      reputationRecorded: result.reputationRecorded,
+      reputationError: result.reputationError,
+      fileverseFileId: result.agentResult.fileverseFileId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

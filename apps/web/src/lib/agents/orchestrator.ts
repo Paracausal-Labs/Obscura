@@ -1,12 +1,13 @@
-import { keccak256, toHex } from "viem";
+import { keccak256, toHex, stringToHex, pad } from "viem";
 import { AgentRole } from "@obscura/shared";
 import type { ActivityEvent, AgentResult, Job } from "@obscura/shared";
 import type { AgentContext, ActivityEmitter, OrchestratorState } from "./types";
-import { classifyJobAgent } from "../config/agents";
+import { classifyJobAgent, AGENTS } from "../config/agents";
 import { getAgentRoleByAddress } from "../config/addresses";
 import { getUserPreferences } from "../integrations/ens";
 import { getWalletClientForRole, getBaseSepoliaClient } from "../config/chains";
 import { agentJobsConfig } from "../contracts/agent-jobs";
+import { reputationConfig } from "../contracts/reputation";
 import { ScoutAgent } from "./scout";
 import { AnalystAgent } from "./analyst";
 import { GhostAgent } from "./ghost";
@@ -23,6 +24,8 @@ export interface ProcessJobResult {
   assignedRole: AgentRole;
   onChainSettled: boolean;
   onChainError?: string;
+  reputationRecorded: boolean;
+  reputationError?: string;
 }
 
 class Orchestrator {
@@ -94,6 +97,17 @@ class Orchestrator {
     const agent = this.createAgent(assignedRole);
     const agentResult = await agent.run(context);
 
+    // Emit report availability for frontend
+    if (agentResult.fileverseFileId) {
+      this.emitActivity({
+        agent: assignedRole,
+        type: "submit",
+        message: `Encrypted report ready for Job #${jobId}`,
+        jobId,
+        metadata: { fileverseFileId: agentResult.fileverseFileId },
+      });
+    }
+
     // Submit deliverable on-chain (provider role)
     const submitTx = await this.submitOnChain(job, agentResult, assignedRole, jobId);
     if (!submitTx.ok) {
@@ -104,6 +118,7 @@ class Orchestrator {
         assignedRole,
         onChainSettled: false,
         onChainError: `submit failed: ${submitTx.error}`,
+        reputationRecorded: false,
       };
     }
 
@@ -147,8 +162,12 @@ class Orchestrator {
         assignedRole,
         onChainSettled: false,
         onChainError: `${sentinelResult.success ? "complete" : "reject"} failed: ${settleTx.error}`,
+        reputationRecorded: false,
       };
     }
+
+    // Write ERC-8004 reputation feedback on-chain
+    const repTx = await this.writeReputation(job, sentinelResult, assignedRole, jobId);
 
     // Clean up active job tracking
     this.state.activeJobs.delete(jobId);
@@ -158,6 +177,8 @@ class Orchestrator {
       sentinelResult,
       assignedRole,
       onChainSettled: true,
+      reputationRecorded: repTx.ok,
+      reputationError: repTx.ok ? undefined : repTx.error,
     };
   }
 
@@ -235,6 +256,56 @@ class Orchestrator {
         agent: evaluatorRole,
         type: "error",
         message: `On-chain ${sentinelResult.success ? "complete" : "reject"} failed for Job #${jobId}: ${msg}`,
+        jobId,
+      });
+      return { ok: false, error: msg };
+    }
+  }
+
+  private async writeReputation(
+    job: Job,
+    sentinelResult: AgentResult,
+    providerRole: AgentRole,
+    jobId: number
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
+    try {
+      const walletClient = getWalletClientForRole(AgentRole.Sentinel);
+      const publicClient = getBaseSepoliaClient();
+
+      const agentMeta = AGENTS[providerRole];
+      const score = sentinelResult.success ? 100n : 0n;
+      const tag1 = pad(stringToHex("obscura.job"), { size: 32 });
+      const tag2 = pad(stringToHex(providerRole), { size: 32 });
+
+      const hash = await walletClient.writeContract({
+        ...reputationConfig,
+        functionName: "giveFeedback",
+        args: [
+          BigInt(agentMeta.id),
+          score,
+          0,
+          tag1,
+          tag2,
+          `job/${jobId}`,
+          sentinelResult.metadata.reasoning,
+          keccak256(toHex(sentinelResult.deliverableHash || "none")),
+        ],
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+
+      this.emitActivity({
+        agent: AgentRole.Sentinel,
+        type: "tool_call",
+        message: `ERC-8004 reputation recorded for ${providerRole} on Job #${jobId} (score: ${score})`,
+        jobId,
+      });
+      return { ok: true };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      this.emitActivity({
+        agent: AgentRole.Sentinel,
+        type: "error",
+        message: `ERC-8004 reputation write failed for Job #${jobId}: ${msg}`,
         jobId,
       });
       return { ok: false, error: msg };
