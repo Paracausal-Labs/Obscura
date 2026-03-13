@@ -2,6 +2,7 @@ import { AgentRole } from "@obscura/shared";
 import type { ActivityEvent, AgentResult, Job } from "@obscura/shared";
 import type { AgentContext, ActivityEmitter, OrchestratorState } from "./types";
 import { classifyJobAgent } from "../config/agents";
+import { getAgentRoleByAddress } from "../config/addresses";
 import { getUserPreferences } from "../integrations/ens";
 import { ScoutAgent } from "./scout";
 import { AnalystAgent } from "./analyst";
@@ -48,8 +49,8 @@ class Orchestrator {
   }> {
     const jobId = Number(job.id);
 
-    // Classify which agent should handle this job
-    const assignedRole = classifyJobAgent(job.description);
+    // Use on-chain provider address if set, fall back to description classification
+    const assignedRole = getAgentRoleByAddress(job.provider) ?? classifyJobAgent(job.description);
 
     this.state.activeJobs.set(jobId, {
       agent: assignedRole,
@@ -85,6 +86,7 @@ class Orchestrator {
       deliverableHash: agentResult.deliverableHash,
       reasoning: agentResult.metadata.reasoning,
       userRisk: userPrefs.risk,
+      agentSuccess: agentResult.success,
     });
 
     const sentinelJob: Job = {

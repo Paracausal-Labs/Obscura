@@ -1,4 +1,5 @@
 import type { Address } from "viem";
+import { AgentRole } from "@obscura/shared";
 
 export const ADDRESSES = {
   AGENT_JOBS: (process.env.NEXT_PUBLIC_AGENT_JOBS_ADDRESS || "0x0000000000000000000000000000000000000000") as Address,
@@ -13,3 +14,11 @@ export const AGENT_ADDRESSES = {
   ghost: (process.env.NEXT_PUBLIC_GHOST_ADDRESS || "0x0000000000000000000000000000000000000003") as Address,
   sentinel: (process.env.NEXT_PUBLIC_SENTINEL_ADDRESS || "0x0000000000000000000000000000000000000004") as Address,
 } as const;
+
+export function getAgentRoleByAddress(address: string): AgentRole | null {
+  const lower = address.toLowerCase();
+  for (const [role, addr] of Object.entries(AGENT_ADDRESSES)) {
+    if (addr.toLowerCase() === lower) return role as AgentRole;
+  }
+  return null;
+}
