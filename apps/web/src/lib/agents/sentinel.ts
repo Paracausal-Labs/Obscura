@@ -21,6 +21,7 @@ const EXPECTED_TOOLS: Record<string, string[]> = {
     "getSwapQuote",
     "executeSwap",
     "getTransactionStatus",
+    "signAndBroadcast",
     "writeEncryptedReport",
   ],
 };
@@ -35,6 +36,7 @@ interface EvaluationContext {
   deliverableHash: string;
   reasoning: string;
   userRisk: string;
+  agentSuccess?: boolean;
 }
 
 export class SentinelAgent extends BaseAgent {
@@ -50,6 +52,24 @@ export class SentinelAgent extends BaseAgent {
       : ({} as EvaluationContext);
 
     toolsCalled.push("evaluate");
+
+    if (evalCtx.agentSuccess === false) {
+      this.emit({
+        agent: this.role,
+        type: "reject",
+        message: `Sentinel auto-rejected Job #${jobId} — agent reported failure`,
+        jobId,
+      });
+      return {
+        success: false,
+        deliverableHash: "",
+        metadata: {
+          toolsCalled,
+          duration: 0,
+          reasoning: "Auto-rejected: agent reported execution failure",
+        },
+      };
+    }
 
     this.emit({
       agent: this.role,
