@@ -1,14 +1,42 @@
+import { createHmac } from "crypto";
 import { NextResponse } from "next/server";
 import { getEnsText } from "@/lib/integrations/ens";
 
 export async function POST(req: Request) {
   try {
-    const txDetails = await req.json();
+    const secret = process.env.BITGO_WEBHOOK_SECRET;
+    if (!secret) {
+      return NextResponse.json(
+        { error: "Webhook not configured" },
+        { status: 500 }
+      );
+    }
+
+    const rawBody = await req.text();
+    const signature = req.headers.get("x-bitgo-signature") || "";
+    const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
+
+    if (signature !== expected) {
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 401 }
+      );
+    }
+
+    const txDetails = JSON.parse(rawBody);
+
+    const ensName = txDetails.wallet?.label || txDetails.ensName;
+    if (!ensName) {
+      return NextResponse.json(
+        { error: "No user context in webhook" },
+        { status: 400 }
+      );
+    }
 
     // Read user's limits from ENS text records
-    const maxTrade = await getEnsText("user.eth", "defi.maxTrade");
-    const allowedAssets = await getEnsText("user.eth", "defi.assets");
-    const killswitch = await getEnsText("user.eth", "agent.killswitch");
+    const maxTrade = await getEnsText(ensName, "defi.maxTrade");
+    const allowedAssets = await getEnsText(ensName, "defi.assets");
+    const killswitch = await getEnsText(ensName, "agent.killswitch");
 
     // Kill switch check
     if (killswitch === "true") {
@@ -31,7 +59,9 @@ export async function POST(req: Request) {
 
     // Asset whitelist check
     if (txDetails.asset && allowedAssets) {
-      const allowed = allowedAssets.split(",").map((a: string) => a.trim().toLowerCase());
+      const allowed = allowedAssets
+        .split(",")
+        .map((a: string) => a.trim().toLowerCase());
       if (!allowed.includes(txDetails.asset.toLowerCase())) {
         return NextResponse.json({
           approved: false,
