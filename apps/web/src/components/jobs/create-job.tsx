@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { classifyJobAgent, AGENTS } from "@/lib/config/agents";
 import { agentJobsConfig, AGENT_JOBS_ABI } from "@/lib/contracts/agent-jobs";
 import { ADDRESSES, AGENT_ADDRESSES } from "@/lib/config/addresses";
+import { useEnsIdentity, useEnsPreferences } from "@/hooks/useEnsIdentity";
 
 type FlowStep =
   | "idle"
@@ -47,6 +48,9 @@ export function CreateJob() {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { signMessageAsync } = useSignMessage();
+
+  const { ensName } = useEnsIdentity(address);
+  const prefs = useEnsPreferences(ensName);
 
   const suggestedAgent = description ? classifyJobAgent(description) : null;
   const agentMeta = suggestedAgent ? AGENTS[suggestedAgent] : null;
@@ -126,6 +130,7 @@ export function CreateJob() {
           expiredAt: expiredAt.toString(),
           client: address,
           userSignature,
+          userEnsName: ensName || undefined,
         }),
       });
 
@@ -192,6 +197,29 @@ export function CreateJob() {
 
           {!isConnected && (
             <p className="text-xs text-amber-400">Connect your wallet to post a job</p>
+          )}
+
+          {isConnected && prefs.hasRecords && (
+            <div className="rounded-md bg-zinc-800/50 border border-zinc-700/50 p-3 space-y-1.5">
+              <p className="text-xs text-zinc-500 font-medium">ENS DeFi Preferences</p>
+              <div className="flex flex-wrap gap-3 text-xs">
+                <span className="text-zinc-400">
+                  Risk: <span className="text-violet-400">{prefs.risk}</span>
+                </span>
+                <span className="text-zinc-400">
+                  Assets: <span className="text-violet-400">{prefs.assets}</span>
+                </span>
+                <span className="text-zinc-400">
+                  Max trade: <span className="text-violet-400">{prefs.maxTrade} USDC</span>
+                </span>
+                {prefs.killswitch && (
+                  <span className="text-red-400">Kill switch active</span>
+                )}
+              </div>
+              {ensName && (
+                <p className="text-[10px] text-zinc-600">Loaded from {ensName} text records</p>
+              )}
+            </div>
           )}
 
           {step !== "idle" && (

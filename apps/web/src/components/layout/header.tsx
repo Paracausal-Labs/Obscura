@@ -3,6 +3,7 @@
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEnsIdentity } from "@/hooks/useEnsIdentity";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard" },
@@ -14,10 +15,8 @@ export function Header() {
   const pathname = usePathname();
   const { ready, authenticated, login, logout, user } = usePrivy();
 
-  const walletAddress = user?.wallet?.address;
-  const truncated = walletAddress
-    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-    : null;
+  const walletAddress = user?.wallet?.address as `0x${string}` | undefined;
+  const { ensName, ensAvatar, displayName } = useEnsIdentity(walletAddress);
 
   return (
     <header className="border-b border-zinc-800 bg-[#09090b]/80 backdrop-blur-sm sticky top-0 z-50">
@@ -49,8 +48,14 @@ export function Header() {
               onClick={logout}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:bg-zinc-700 transition-colors"
             >
-              <span className="w-2 h-2 rounded-full bg-green-500" />
-              {truncated}
+              {ensAvatar ? (
+                <img src={ensAvatar} alt="" className="w-5 h-5 rounded-full" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+              )}
+              <span className={ensName ? "text-violet-400" : ""}>
+                {displayName}
+              </span>
             </button>
           ) : (
             <button

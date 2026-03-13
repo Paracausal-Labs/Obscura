@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "turbo": "^2.8.16"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1"
   }
 }
