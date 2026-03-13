@@ -1,6 +1,6 @@
 "use client";
 
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -12,6 +12,12 @@ const NAV_ITEMS = [
 
 export function Header() {
   const pathname = usePathname();
+  const { ready, authenticated, login, logout, user } = usePrivy();
+
+  const walletAddress = user?.wallet?.address;
+  const truncated = walletAddress
+    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+    : null;
 
   return (
     <header className="border-b border-zinc-800 bg-[#09090b]/80 backdrop-blur-sm sticky top-0 z-50">
@@ -37,7 +43,24 @@ export function Header() {
             ))}
           </nav>
         </div>
-        <ConnectButton />
+        {ready && (
+          authenticated ? (
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:bg-zinc-700 transition-colors"
+            >
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              {truncated}
+            </button>
+          ) : (
+            <button
+              onClick={login}
+              className="px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-sm font-medium transition-colors"
+            >
+              Connect
+            </button>
+          )
+        )}
       </div>
     </header>
   );
