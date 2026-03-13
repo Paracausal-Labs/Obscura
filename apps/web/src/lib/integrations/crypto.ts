@@ -6,8 +6,8 @@ import {
 } from "crypto";
 import type { EncryptedPayload } from "@obscura/shared";
 
-export function deriveKeyFromSignature(signature: string): Buffer {
-  return createHash("sha256").update(signature).digest();
+export function deriveKeyFromSignature(signature: string, salt: string = ""): Buffer {
+  return createHash("sha256").update(signature).update(salt).digest();
 }
 
 export function encrypt(text: string, key: Buffer): EncryptedPayload {

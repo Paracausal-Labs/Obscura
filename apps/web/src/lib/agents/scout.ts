@@ -114,7 +114,8 @@ User preferences (from ENS text records):
           const result = await createEncryptedReport(
             title,
             content,
-            userSignature
+            userSignature,
+            job.id.toString()
           );
           deliverableHash = result.encryptedContent;
           fileverseFileId = result.fileId;

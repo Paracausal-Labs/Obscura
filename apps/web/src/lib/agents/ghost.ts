@@ -144,7 +144,8 @@ export class GhostAgent extends BaseAgent {
     const report = await createEncryptedReport(
       `Ghost Execution — Job #${jobId}`,
       reportContent,
-      userSignature
+      userSignature,
+      job.id.toString()
     );
 
     this.emit({
@@ -156,7 +157,7 @@ export class GhostAgent extends BaseAgent {
 
     return {
       success: !signingFailed,
-      deliverableHash: report.encryptedContent,
+      deliverableHash: signingFailed ? "" : report.encryptedContent,
       fileverseFileId: report.fileId,
       metadata: {
         toolsCalled,
