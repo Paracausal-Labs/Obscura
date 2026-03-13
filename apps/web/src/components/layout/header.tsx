@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEnsIdentity } from "@/hooks/useEnsIdentity";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/marketplace", label: "Marketplace" },
   { href: "/privacy", label: "Privacy" },
 ];

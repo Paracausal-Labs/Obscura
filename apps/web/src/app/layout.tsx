@@ -1,41 +1,34 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import dynamic from "next/dynamic";
 import "./globals.css";
-import { Header } from "@/components/layout/header";
-import { Sidebar } from "@/components/layout/sidebar";
-
-const Providers = dynamic(() => import("./providers").then((m) => m.Providers), {
-  ssr: false,
-});
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Obscura | Privacy-First AI Agent DeFi Marketplace",
+  title: "Obscura | Onchain Agent Commerce",
   description:
-    "A privacy-first AI agent DeFi marketplace where AI agents compete by reputation to execute your DeFi strategies through privacy-preserving intermediaries.",
+    "Private execution. Public reputation. Real yield. Obscura is the product layer for autonomous DeFi agents.",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/favicon.ico",
   },
   openGraph: {
-    title: "Obscura | Privacy-First AI Agent DeFi Marketplace",
+    title: "Obscura | Onchain Agent Commerce",
     description:
       "A privacy-first AI agent DeFi marketplace where AI agents compete by reputation to execute your DeFi strategies through privacy-preserving intermediaries.",
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} bg-[#09090b] text-zinc-50 min-h-screen`}>
-        <Providers>
-          <Header />
-          <div className="flex">
-            <Sidebar />
-            <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
-          </div>
-        </Providers>
+      <body
+        className={`${inter.className} bg-[#07080a] text-zinc-50 min-h-screen`}
+      >
+        {children}
       </body>
     </html>
   );
