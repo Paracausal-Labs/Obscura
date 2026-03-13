@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
-import { getEnsText } from "@/lib/integrations/ens";
+import { getBaseSepoliaClient } from "@/lib/config/chains";
+import { agentJobsConfig } from "@/lib/contracts/agent-jobs";
+import { getUserPreferences, checkKillSwitch } from "@/lib/integrations/ens";
 
 export async function POST(req: Request) {
   try {
@@ -27,21 +29,41 @@ export async function POST(req: Request) {
 
     const txDetails = JSON.parse(rawBody);
 
-    const ensName = txDetails.wallet?.label || txDetails.ensName;
-    if (!ensName) {
+    // Extract jobId from the BitGo address label (set by Ghost as "job-{id}")
+    const label: string = txDetails.label || txDetails.wallet?.label || "";
+    const jobIdMatch = label.match(/^job-(\d+)$/);
+    if (!jobIdMatch) {
       return NextResponse.json(
-        { error: "No user context in webhook" },
+        { error: "Cannot determine job from webhook — no job label" },
         { status: 400 }
       );
     }
 
-    // Read user's limits from ENS text records
-    const maxTrade = await getEnsText(ensName, "defi.maxTrade");
-    const allowedAssets = await getEnsText(ensName, "defi.assets");
-    const killswitch = await getEnsText(ensName, "agent.killswitch");
+    const jobId = BigInt(jobIdMatch[1]);
+
+    // Read verified client address from on-chain job
+    const publicClient = getBaseSepoliaClient();
+    let onChainJob: { client: `0x${string}` };
+    try {
+      onChainJob = await publicClient.readContract({
+        ...agentJobsConfig,
+        functionName: "getJob",
+        args: [jobId],
+      });
+    } catch {
+      return NextResponse.json(
+        { error: "Job not found on-chain" },
+        { status: 404 }
+      );
+    }
+
+    // Use verified on-chain client address for policy checks
+    const clientAddress = onChainJob.client;
+    const userPrefs = await getUserPreferences(clientAddress);
 
     // Kill switch check
-    if (killswitch === "true") {
+    const killed = await checkKillSwitch(clientAddress);
+    if (killed) {
       return NextResponse.json({
         approved: false,
         reason: "Kill switch is active",
@@ -49,9 +71,10 @@ export async function POST(req: Request) {
     }
 
     // Spending limit check
-    if (txDetails.amount && maxTrade) {
+    if (txDetails.amount && userPrefs.maxTrade) {
       const amountUsd = parseFloat(txDetails.amount);
-      if (amountUsd > parseFloat(maxTrade)) {
+      const maxTrade = parseFloat(userPrefs.maxTrade);
+      if (amountUsd > maxTrade) {
         return NextResponse.json({
           approved: false,
           reason: `Amount ${amountUsd} exceeds spending limit ${maxTrade}`,
@@ -60,14 +83,14 @@ export async function POST(req: Request) {
     }
 
     // Asset whitelist check
-    if (txDetails.asset && allowedAssets) {
-      const allowed = allowedAssets
+    if (txDetails.asset && userPrefs.assets) {
+      const allowed = userPrefs.assets
         .split(",")
         .map((a: string) => a.trim().toLowerCase());
       if (!allowed.includes(txDetails.asset.toLowerCase())) {
         return NextResponse.json({
           approved: false,
-          reason: `Asset ${txDetails.asset} not in whitelist: ${allowedAssets}`,
+          reason: `Asset ${txDetails.asset} not in whitelist: ${userPrefs.assets}`,
         });
       }
     }
