@@ -3,9 +3,17 @@ import { NextResponse } from "next/server";
 import { getBaseSepoliaClient } from "@/lib/config/chains";
 import { agentJobsConfig } from "@/lib/contracts/agent-jobs";
 import { getUserPreferences, checkKillSwitch } from "@/lib/integrations/ens";
+import { isBitGoEnabled } from "@/lib/integrations/bitgo";
 
 export async function POST(req: Request) {
   try {
+    if (!isBitGoEnabled()) {
+      return NextResponse.json(
+        { error: "BitGo integration is disabled" },
+        { status: 503 }
+      );
+    }
+
     const secret = process.env.BITGO_WEBHOOK_SECRET;
     if (!secret) {
       return NextResponse.json(
@@ -15,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     const rawBody = await req.text();
-    const signature = req.headers.get("x-bitgo-signature") || "";
+    const signature = req.headers.get("x-signature-sha256") || "";
     const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
 
     const sigBuf = Buffer.from(signature, "utf8");

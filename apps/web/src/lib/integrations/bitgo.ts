@@ -1,5 +1,9 @@
 const BASE_URL = "https://app.bitgo-test.com/api/v2";
 
+export function isBitGoEnabled(): boolean {
+  return process.env.BITGO_ENABLED === "true";
+}
+
 function getHeaders(): Record<string, string> {
   const token = process.env.BITGO_ACCESS_TOKEN;
   if (!token) throw new Error("BITGO_ACCESS_TOKEN not set");

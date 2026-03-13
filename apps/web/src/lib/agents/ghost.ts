@@ -7,7 +7,7 @@ import {
   executeSwap,
   getTransactionStatus,
 } from "../integrations/heyelsa";
-import { signAndBroadcast, createAddress } from "../integrations/bitgo";
+import { signAndBroadcast, createAddress, isBitGoEnabled } from "../integrations/bitgo";
 import { createEncryptedReport } from "../integrations/fileverse";
 
 const MAX_POLLS = 10;
@@ -67,6 +67,55 @@ export class GhostAgent extends BaseAgent {
       };
     }
 
+    // Step 1: Get swap quote (always runs — works regardless of BitGo)
+    this.emitToolCall("getSwapQuote", jobId);
+    toolsCalled.push("getSwapQuote");
+    const quote = await getSwapQuote({
+      from_token: swapParams.from_token,
+      to_token: swapParams.to_token,
+      amount: swapParams.amount,
+    });
+
+    // If BitGo is disabled, produce a quote + policy preview report only
+    if (!isBitGoEnabled()) {
+      this.emit({
+        agent: this.role,
+        type: "tool_call",
+        message: `BitGo unavailable — Ghost producing quote preview for Job #${jobId}`,
+        jobId,
+      });
+
+      this.emitToolCall("writeEncryptedReport", jobId);
+      toolsCalled.push("writeEncryptedReport");
+
+      const report = await createEncryptedReport(
+        `Ghost Quote Preview — Job #${jobId}`,
+        buildPreviewReport(swapParams, quote),
+        userSignature,
+        job.id.toString()
+      );
+
+      this.emit({
+        agent: this.role,
+        type: "submit",
+        message: `Ghost submitted quote preview for Job #${jobId} (BitGo execution unavailable)`,
+        jobId,
+      });
+
+      return {
+        success: true,
+        deliverableHash: report.encryptedContent,
+        fileverseFileId: report.fileId,
+        metadata: {
+          toolsCalled,
+          duration: 0,
+          reasoning: "Quote and policy preview produced. BitGo execution currently unavailable — no funds were moved.",
+        },
+      };
+    }
+
+    // === Full BitGo execution path (BITGO_ENABLED=true) ===
+
     // Step 0: Create BitGo intermediary address for privacy (fail-closed)
     this.emitToolCall("createIntermediaryAddress", jobId);
     toolsCalled.push("createIntermediaryAddress");
@@ -102,15 +151,6 @@ export class GhostAgent extends BaseAgent {
         },
       };
     }
-
-    // Step 1: Get swap quote
-    this.emitToolCall("getSwapQuote", jobId);
-    toolsCalled.push("getSwapQuote");
-    const quote = await getSwapQuote({
-      from_token: swapParams.from_token,
-      to_token: swapParams.to_token,
-      amount: swapParams.amount,
-    });
 
     // Step 2: Execute swap via intermediary address (dry_run to get pipeline_id)
     this.emitToolCall("executeSwap(dry_run)", jobId);
@@ -204,6 +244,21 @@ export class GhostAgent extends BaseAgent {
       },
     };
   }
+}
+
+function buildPreviewReport(
+  params: ReturnType<typeof parseSwapParams>,
+  quote: unknown
+): string {
+  return [
+    `## Swap Quote Preview (BitGo Execution Unavailable)`,
+    `- **From:** ${params.amount} ${params.from_token}`,
+    `- **To:** ${params.to_token}`,
+    `- **Quote:** ${JSON.stringify(quote)}`,
+    `- **Mode:** Quote + policy preview only`,
+    `- **BitGo Status:** Not configured — no intermediary address created, no funds moved`,
+    `- **Privacy:** User EOA was never exposed to any DEX`,
+  ].join("\n");
 }
 
 function buildSuccessReport(
