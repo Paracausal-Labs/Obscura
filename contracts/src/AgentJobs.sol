@@ -68,7 +68,7 @@ contract AgentJobs is IAgentJobs {
         emit JobCreated(jobId, msg.sender, provider, evaluator);
     }
 
-    function fund(uint256 jobId, uint256 expectedBudget) external {
+    function fund(uint256 jobId, uint256 expectedBudget) external onlyClient(jobId) {
         _requireExists(jobId);
         Job storage job = _jobs[jobId];
         _requireStatus(job, Status.Open);

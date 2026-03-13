@@ -179,6 +179,19 @@ contract AgentJobsTest is Test {
         jobs.fund(jobId, 0);
     }
 
+    function test_revert_fundByNonClient() public {
+        uint256 jobId = _createDefaultJob();
+
+        address stranger = makeAddr("stranger");
+        usdc.mint(stranger, BUDGET);
+        vm.prank(stranger);
+        usdc.approve(address(jobs), BUDGET);
+
+        vm.prank(stranger);
+        vm.expectRevert(AgentJobs.OnlyClient.selector);
+        jobs.fund(jobId, BUDGET);
+    }
+
     function test_jobCount() public {
         assertEq(jobs.jobCount(), 0);
         _createDefaultJob();
