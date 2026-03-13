@@ -1,9 +1,12 @@
+import { keccak256, toHex } from "viem";
 import { AgentRole } from "@obscura/shared";
 import type { ActivityEvent, AgentResult, Job } from "@obscura/shared";
 import type { AgentContext, ActivityEmitter, OrchestratorState } from "./types";
 import { classifyJobAgent } from "../config/agents";
 import { getAgentRoleByAddress } from "../config/addresses";
 import { getUserPreferences } from "../integrations/ens";
+import { getAgentWalletClient, getBaseSepoliaClient } from "../config/chains";
+import { agentJobsConfig } from "../contracts/agent-jobs";
 import { ScoutAgent } from "./scout";
 import { AnalystAgent } from "./analyst";
 import { GhostAgent } from "./ghost";
@@ -78,6 +81,9 @@ class Orchestrator {
     const agent = this.createAgent(assignedRole);
     const agentResult = await agent.run(context);
 
+    // Submit deliverable on-chain (provider role)
+    await this.submitOnChain(job, agentResult, jobId);
+
     // Build evaluation context for Sentinel
     const evalPayload = JSON.stringify({
       targetRole: assignedRole,
@@ -105,10 +111,85 @@ class Orchestrator {
     const sentinel = new SentinelAgent(this.emitActivity);
     const sentinelResult = await sentinel.run(sentinelContext);
 
+    // Complete or reject on-chain (evaluator role)
+    await this.settleOnChain(job, sentinelResult, jobId);
+
     // Clean up active job tracking
     this.state.activeJobs.delete(jobId);
 
     return { agentResult, sentinelResult, assignedRole };
+  }
+
+  private async submitOnChain(
+    job: Job,
+    agentResult: AgentResult,
+    jobId: number
+  ): Promise<void> {
+    try {
+      const walletClient = getAgentWalletClient();
+      const publicClient = getBaseSepoliaClient();
+
+      const deliverableContent = agentResult.deliverableHash || "no-deliverable";
+      const deliverableBytes = keccak256(toHex(deliverableContent));
+
+      const hash = await walletClient.writeContract({
+        ...agentJobsConfig,
+        functionName: "submit",
+        args: [job.id, deliverableBytes],
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+
+      this.emitActivity({
+        agent: AgentRole.Sentinel,
+        type: "tool_call",
+        message: `On-chain submit for Job #${jobId} (tx: ${hash.slice(0, 10)}...)`,
+        jobId,
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      this.emitActivity({
+        agent: AgentRole.Sentinel,
+        type: "error",
+        message: `On-chain submit failed for Job #${jobId}: ${msg}`,
+        jobId,
+      });
+    }
+  }
+
+  private async settleOnChain(
+    job: Job,
+    sentinelResult: AgentResult,
+    jobId: number
+  ): Promise<void> {
+    try {
+      const walletClient = getAgentWalletClient();
+      const publicClient = getBaseSepoliaClient();
+
+      const reasonBytes = keccak256(toHex(sentinelResult.metadata.reasoning));
+      const functionName = sentinelResult.success ? "complete" : "reject";
+
+      const hash = await walletClient.writeContract({
+        ...agentJobsConfig,
+        functionName,
+        args: [job.id, reasonBytes],
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
+
+      this.emitActivity({
+        agent: AgentRole.Sentinel,
+        type: sentinelResult.success ? "complete" : "reject",
+        message: `On-chain ${functionName} for Job #${jobId} (tx: ${hash.slice(0, 10)}...)`,
+        jobId,
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      this.emitActivity({
+        agent: AgentRole.Sentinel,
+        type: "error",
+        message: `On-chain ${sentinelResult.success ? "complete" : "reject"} failed for Job #${jobId}: ${msg}`,
+        jobId,
+      });
+    }
   }
 
   getActivityLog(): ActivityEvent[] {
