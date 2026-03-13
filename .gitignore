@@ -16,9 +16,8 @@ contracts/broadcast/
 # Fileverse
 creds/
 
-# Next.js defaults (unused)
+# Next.js default fonts (unused)
 apps/web/src/app/fonts/
-apps/web/README.md
 
 # OS
 .DS_Store
