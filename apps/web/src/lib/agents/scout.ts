@@ -131,22 +131,28 @@ User preferences (from ENS text records):
       maxSteps: 5,
     });
 
+    const hasDeliverable = deliverableHash !== "";
+
     this.emit({
       agent: this.role,
-      type: "submit",
-      message: `Scout submitted deliverable for Job #${jobId}`,
+      type: hasDeliverable ? "submit" : "error",
+      message: hasDeliverable
+        ? `Scout submitted deliverable for Job #${jobId}`
+        : `Scout failed to produce report for Job #${jobId}`,
       jobId,
       metadata: { reasoning: result.text },
     });
 
     return {
-      success: true,
+      success: hasDeliverable,
       deliverableHash,
       fileverseFileId,
       metadata: {
         toolsCalled,
         duration: 0,
-        reasoning: result.text,
+        reasoning: hasDeliverable
+          ? result.text
+          : "Agent completed but failed to produce encrypted report",
       },
     };
   }

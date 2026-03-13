@@ -78,9 +78,28 @@ export class SentinelAgent extends BaseAgent {
       jobId,
     });
 
-    // Score component 1: Deliverable exists (+30)
+    // Hard reject: no deliverable means nothing to evaluate
     const hasDeliverable = Boolean(evalCtx.deliverableHash);
-    const deliverableScore = hasDeliverable ? 30 : 0;
+    if (!hasDeliverable) {
+      this.emit({
+        agent: this.role,
+        type: "reject",
+        message: `Sentinel rejected Job #${jobId} — no deliverable produced`,
+        jobId,
+      });
+      return {
+        success: false,
+        deliverableHash: "",
+        metadata: {
+          toolsCalled,
+          duration: 0,
+          reasoning: "Rejected: agent produced no deliverable (score 0/100)",
+        },
+      };
+    }
+
+    // Score component 1: Deliverable exists (+30)
+    const deliverableScore = 30;
 
     // Score component 2: Expected tools called (+25)
     const expected = EXPECTED_TOOLS[evalCtx.targetRole] ?? [];
