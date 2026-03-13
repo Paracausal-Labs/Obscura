@@ -7,7 +7,7 @@ import {
   executeSwap,
   getTransactionStatus,
 } from "../integrations/heyelsa";
-import { signAndBroadcast } from "../integrations/bitgo";
+import { signAndBroadcast, createAddress } from "../integrations/bitgo";
 import { createEncryptedReport } from "../integrations/fileverse";
 
 const MAX_POLLS = 10;
@@ -67,6 +67,31 @@ export class GhostAgent extends BaseAgent {
       };
     }
 
+    // Step 0: Create BitGo intermediary address for privacy
+    this.emitToolCall("createIntermediaryAddress", jobId);
+    toolsCalled.push("createIntermediaryAddress");
+
+    let intermediaryAddress = swapParams.wallet_address;
+    try {
+      const addrResult = await createAddress(`job-${jobId}`) as { address?: string };
+      if (addrResult.address) {
+        intermediaryAddress = addrResult.address;
+        this.emit({
+          agent: this.role,
+          type: "tool_call",
+          message: `Created BitGo intermediary address for Job #${jobId}: ${intermediaryAddress.slice(0, 10)}...`,
+          jobId,
+        });
+      }
+    } catch {
+      this.emit({
+        agent: this.role,
+        type: "tool_call",
+        message: `BitGo intermediary unavailable for Job #${jobId}, falling back to direct address`,
+        jobId,
+      });
+    }
+
     // Step 1: Get swap quote
     this.emitToolCall("getSwapQuote", jobId);
     toolsCalled.push("getSwapQuote");
@@ -76,14 +101,14 @@ export class GhostAgent extends BaseAgent {
       amount: swapParams.amount,
     });
 
-    // Step 2: Execute swap in dry_run mode to get pipeline_id
+    // Step 2: Execute swap via intermediary address (dry_run to get pipeline_id)
     this.emitToolCall("executeSwap(dry_run)", jobId);
     toolsCalled.push("executeSwap");
     const dryRunResult = await executeSwap({
       from_token: swapParams.from_token,
       to_token: swapParams.to_token,
       amount: swapParams.amount,
-      wallet_address: swapParams.wallet_address,
+      wallet_address: intermediaryAddress,
       dry_run: true,
     });
 
@@ -138,8 +163,8 @@ export class GhostAgent extends BaseAgent {
     toolsCalled.push("writeEncryptedReport");
 
     const reportContent = signingFailed
-      ? buildFailureReport(swapParams, quote, pipelineId)
-      : buildSuccessReport(swapParams, quote, pipelineId, signResult);
+      ? buildFailureReport(swapParams, quote, pipelineId, intermediaryAddress)
+      : buildSuccessReport(swapParams, quote, pipelineId, signResult, intermediaryAddress);
 
     const report = await createEncryptedReport(
       `Ghost Execution — Job #${jobId}`,
@@ -174,28 +199,32 @@ function buildSuccessReport(
   params: ReturnType<typeof parseSwapParams>,
   quote: unknown,
   pipelineId: string,
-  signResult: unknown
+  signResult: unknown,
+  intermediaryAddress: string
 ): string {
   return [
     `## Swap Execution Report`,
     `- **From:** ${params.amount} ${params.from_token}`,
     `- **To:** ${params.to_token}`,
+    `- **Intermediary:** ${intermediaryAddress}`,
     `- **Quote:** ${JSON.stringify(quote)}`,
     `- **Pipeline ID:** ${pipelineId}`,
     `- **BitGo TX:** ${JSON.stringify(signResult)}`,
-    `- **Status:** Signed and broadcast`,
+    `- **Status:** Signed and broadcast via BitGo intermediary`,
   ].join("\n");
 }
 
 function buildFailureReport(
   params: ReturnType<typeof parseSwapParams>,
   quote: unknown,
-  pipelineId: string
+  pipelineId: string,
+  intermediaryAddress: string
 ): string {
   return [
     `## Swap Attempt Report (Signing Failed)`,
     `- **From:** ${params.amount} ${params.from_token}`,
     `- **To:** ${params.to_token}`,
+    `- **Intermediary:** ${intermediaryAddress}`,
     `- **Quote:** ${JSON.stringify(quote)}`,
     `- **Pipeline ID:** ${pipelineId}`,
     `- **Status:** Quote obtained, signing failed`,
