@@ -1,45 +1,144 @@
 "use client";
 
 import { useState } from "react";
+import {
+  useAccount,
+  useWriteContract,
+  usePublicClient,
+  useSignMessage,
+} from "wagmi";
+import { erc20Abi, parseEventLogs, zeroAddress } from "viem";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { classifyJobAgent } from "@/lib/config/agents";
-import { AGENTS } from "@/lib/config/agents";
+import { classifyJobAgent, AGENTS } from "@/lib/config/agents";
+import { agentJobsConfig, AGENT_JOBS_ABI } from "@/lib/contracts/agent-jobs";
+import { ADDRESSES, AGENT_ADDRESSES } from "@/lib/config/addresses";
+
+type FlowStep =
+  | "idle"
+  | "creating"
+  | "approving"
+  | "funding"
+  | "signing"
+  | "submitting"
+  | "done"
+  | "error";
+
+const STEP_LABELS: Record<FlowStep, string> = {
+  idle: "",
+  creating: "1/4 — Creating job on-chain...",
+  approving: "2/4 — Approving USDC spend...",
+  funding: "3/4 — Funding job...",
+  signing: "4/4 — Signing encryption key...",
+  submitting: "Submitting to agents...",
+  done: "Job submitted!",
+  error: "Something went wrong",
+};
 
 export function CreateJob() {
   const [description, setDescription] = useState("");
   const [budget, setBudget] = useState("0.05");
-  const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [step, setStep] = useState<FlowStep>("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
+  const { writeContractAsync } = useWriteContract();
+  const { signMessageAsync } = useSignMessage();
 
   const suggestedAgent = description ? classifyJobAgent(description) : null;
   const agentMeta = suggestedAgent ? AGENTS[suggestedAgent] : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!description.trim()) return;
+    if (!description.trim() || !isConnected || !address || !publicClient) return;
 
-    setSubmitting(true);
-    setResult(null);
+    setErrorMsg("");
 
     try {
+      const role = classifyJobAgent(description);
+      const provider = AGENT_ADDRESSES[role as keyof typeof AGENT_ADDRESSES];
+      const evaluator = AGENT_ADDRESSES.sentinel;
+      const expiredAt = BigInt(Math.floor(Date.now() / 1000) + 3600);
+      const budgetBigInt = BigInt(Math.round(parseFloat(budget) * 1e6));
+
+      // Step 1: Create job on-chain
+      setStep("creating");
+      const createHash = await writeContractAsync({
+        ...agentJobsConfig,
+        functionName: "createJob",
+        args: [provider, evaluator, expiredAt, description, zeroAddress],
+      });
+
+      const createReceipt = await publicClient.waitForTransactionReceipt({
+        hash: createHash,
+      });
+
+      const events = parseEventLogs({
+        abi: AGENT_JOBS_ABI,
+        logs: createReceipt.logs,
+        eventName: "JobCreated",
+      });
+
+      if (events.length === 0) {
+        throw new Error("JobCreated event not found in receipt");
+      }
+      const jobId = events[0].args.jobId;
+
+      // Step 2: Approve USDC spend
+      setStep("approving");
+      const approveHash = await writeContractAsync({
+        address: ADDRESSES.USDC,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [ADDRESSES.AGENT_JOBS, budgetBigInt],
+      });
+      await publicClient.waitForTransactionReceipt({ hash: approveHash });
+
+      // Step 3: Fund the job
+      setStep("funding");
+      const fundHash = await writeContractAsync({
+        ...agentJobsConfig,
+        functionName: "fund",
+        args: [jobId, budgetBigInt],
+      });
+      await publicClient.waitForTransactionReceipt({ hash: fundHash });
+
+      // Step 4: Sign per-job encryption key
+      setStep("signing");
+      const userSignature = await signMessageAsync({
+        message: `Obscura encryption key for job #${jobId}`,
+      });
+
+      // Step 5: Submit to backend
+      setStep("submitting");
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          jobId: jobId.toString(),
           description,
-          budget: Math.round(parseFloat(budget) * 1e6),
+          provider,
+          evaluator,
+          budget: budgetBigInt.toString(),
+          expiredAt: expiredAt.toString(),
+          client: address,
+          userSignature,
         }),
       });
-      const data = await res.json();
-      setResult(data.message || "Job submitted");
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Backend submission failed");
+      }
+
+      setStep("done");
       setDescription("");
-    } catch {
-      setResult("Failed to submit job");
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      setStep("error");
+      setErrorMsg(err instanceof Error ? err.message : "Transaction failed");
     }
   }
 
@@ -82,15 +181,28 @@ export function CreateJob() {
             <div className="flex-1" />
             <Button
               type="submit"
-              disabled={!description.trim() || submitting}
+              disabled={!description.trim() || !isConnected || step !== "idle" && step !== "done" && step !== "error"}
               className="bg-violet-600 hover:bg-violet-700"
             >
-              {submitting ? "Submitting..." : "Post Job →"}
+              {step === "idle" || step === "done" || step === "error"
+                ? "Post Job →"
+                : "Processing..."}
             </Button>
           </div>
 
-          {result && (
-            <p className="text-xs text-green-400">{result}</p>
+          {!isConnected && (
+            <p className="text-xs text-amber-400">Connect your wallet to post a job</p>
+          )}
+
+          {step !== "idle" && (
+            <div className="text-xs">
+              <span className={step === "error" ? "text-red-400" : step === "done" ? "text-green-400" : "text-violet-400"}>
+                {STEP_LABELS[step]}
+              </span>
+              {step === "error" && errorMsg && (
+                <span className="text-red-400 block mt-1">{errorMsg}</span>
+              )}
+            </div>
           )}
         </form>
       </CardContent>
