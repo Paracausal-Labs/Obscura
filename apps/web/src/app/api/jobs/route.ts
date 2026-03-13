@@ -90,6 +90,14 @@ export async function POST(req: Request) {
       );
     }
 
+    // Idempotency: reject if already being processed
+    if (orchestrator.isJobActive(Number(jobId))) {
+      return NextResponse.json(
+        { error: "Job is already being processed" },
+        { status: 409 }
+      );
+    }
+
     // Build job from on-chain data (not caller-supplied)
     const job: Job = {
       id: BigInt(jobId),

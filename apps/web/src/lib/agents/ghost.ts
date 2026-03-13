@@ -67,29 +67,40 @@ export class GhostAgent extends BaseAgent {
       };
     }
 
-    // Step 0: Create BitGo intermediary address for privacy
+    // Step 0: Create BitGo intermediary address for privacy (fail-closed)
     this.emitToolCall("createIntermediaryAddress", jobId);
     toolsCalled.push("createIntermediaryAddress");
 
-    let intermediaryAddress = swapParams.wallet_address;
+    let intermediaryAddress: string;
     try {
       const addrResult = await createAddress(`job-${jobId}`) as { address?: string };
-      if (addrResult.address) {
-        intermediaryAddress = addrResult.address;
-        this.emit({
-          agent: this.role,
-          type: "tool_call",
-          message: `Created BitGo intermediary address for Job #${jobId}: ${intermediaryAddress.slice(0, 10)}...`,
-          jobId,
-        });
+      if (!addrResult.address) {
+        throw new Error("BitGo returned no address");
       }
-    } catch {
+      intermediaryAddress = addrResult.address;
       this.emit({
         agent: this.role,
         type: "tool_call",
-        message: `BitGo intermediary unavailable for Job #${jobId}, falling back to direct address`,
+        message: `Created BitGo intermediary address for Job #${jobId}: ${intermediaryAddress.slice(0, 10)}...`,
         jobId,
       });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.emit({
+        agent: this.role,
+        type: "error",
+        message: `BitGo intermediary creation failed for Job #${jobId}: ${message}. Aborting to protect user privacy.`,
+        jobId,
+      });
+      return {
+        success: false,
+        deliverableHash: "",
+        metadata: {
+          toolsCalled,
+          duration: 0,
+          reasoning: `Aborted: could not create intermediary address (${message}). User wallet privacy preserved.`,
+        },
+      };
     }
 
     // Step 1: Get swap quote

@@ -49,12 +49,21 @@ class Orchestrator {
     }
   };
 
+  isJobActive(jobId: number): boolean {
+    return this.state.activeJobs.has(jobId);
+  }
+
   async processJob(
     job: Job,
     userEnsName: string,
     userSignature: string
   ): Promise<ProcessJobResult> {
     const jobId = Number(job.id);
+
+    // Idempotency guard: reject if job is already being processed
+    if (this.state.activeJobs.has(jobId)) {
+      throw new Error(`Job #${jobId} is already being processed`);
+    }
 
     // Use on-chain provider address if set, fall back to description classification
     const assignedRole = getAgentRoleByAddress(job.provider) ?? classifyJobAgent(job.description);
