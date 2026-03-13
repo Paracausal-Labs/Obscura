@@ -37,12 +37,16 @@ export function ActivityFeed() {
   }, []);
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50">
-      <div className="px-4 py-3 border-b border-zinc-800">
-        <h3 className="text-sm font-semibold">Live Activity</h3>
+    <div className="relative rounded-[2rem] border border-white/[0.06] bg-[#0c0d12] overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ff0033]/30 to-transparent" />
+      <div className="px-5 py-4 border-b border-white/[0.06]">
+        <p className="text-[#ff0033] text-[10px] font-semibold uppercase tracking-widest mb-0.5">
+          Activity
+        </p>
+        <h3 className="text-lg font-light text-white tracking-tight">Live Activity</h3>
       </div>
       <ScrollArea className="h-64">
-        <div className="p-3 space-y-2">
+        <div className="p-4 space-y-2">
           {events.length === 0 && (
             <p className="text-xs text-zinc-600 text-center py-8">
               No activity yet. Post a job to get started.

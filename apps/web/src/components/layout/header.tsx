@@ -19,12 +19,12 @@ export function Header() {
   const { ensName, ensAvatar, displayName } = useEnsIdentity(walletAddress);
 
   return (
-    <header className="border-b border-zinc-800 bg-[#09090b]/80 backdrop-blur-sm sticky top-0 z-50">
+    <header className="border-b border-white/[0.06] bg-[#07080a]/90 backdrop-blur-xl sticky top-0 z-50">
       <div className="flex items-center justify-between px-4 md:px-6 h-14 md:h-16">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
-            <span className="text-violet-500 text-xl">{"\u25C8"}</span>
-            <span className="font-bold text-lg tracking-tight">OBSCURA</span>
+            <span className="text-[#ff0033] text-xl">{"\u25C8"}</span>
+            <span className="font-bold text-lg tracking-[0.1em] uppercase text-white">OBSCURA</span>
           </Link>
           <nav className="hidden md:flex items-center gap-1">
             {NAV_ITEMS.map((item) => (
@@ -33,7 +33,7 @@ export function Header() {
                 href={item.href}
                 className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
                   pathname === item.href
-                    ? "bg-violet-500/10 text-violet-400"
+                    ? "bg-[#ff0033]/10 text-[#ff0033]"
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
@@ -46,21 +46,22 @@ export function Header() {
           authenticated ? (
             <button
               onClick={logout}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-300 hover:bg-zinc-700 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0c0d12] border border-white/[0.06] text-sm text-zinc-300 hover:border-white/[0.12] transition-colors"
             >
               {ensAvatar ? (
-                <img src={ensAvatar} alt="" className="w-5 h-5 rounded-full" />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={ensAvatar} alt="ENS avatar" className="w-5 h-5 rounded-full" />
               ) : (
-                <span className="w-2 h-2 rounded-full bg-green-500" />
+                <span className="w-2 h-2 rounded-full bg-[#ff0033]" />
               )}
-              <span className={ensName ? "text-violet-400" : ""}>
+              <span className={ensName ? "text-[#ff0033]" : ""}>
                 {displayName}
               </span>
             </button>
           ) : (
             <button
               onClick={login}
-              className="px-4 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-sm font-medium transition-colors"
+              className="px-4 py-1.5 rounded-xl bg-[#ff0033] hover:bg-[#ff1a40] text-sm font-medium text-white transition-colors"
             >
               Connect
             </button>

@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from "recharts";
 
 const data = [
@@ -15,18 +14,29 @@ const data = [
 
 export function PnlChart() {
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800">
-      <CardContent className="p-4">
-        <h3 className="text-sm font-semibold mb-2">Weekly P&L</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={data}>
-            <XAxis dataKey="name" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
-            <Bar dataKey="gain" fill="#22c55e" radius={[4, 4, 0, 0]} stackId="pnl" />
-            <Bar dataKey="loss" fill="#ef4444" radius={[0, 0, 4, 4]} stackId="pnl" />
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+    <div className="relative rounded-2xl border border-white/[0.06] bg-[#0c0d12] p-5 overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ff0033]/30 to-transparent" />
+      <p className="text-[#ff0033] text-[10px] font-semibold uppercase tracking-widest mb-1">
+        Performance
+      </p>
+      <h3 className="text-lg font-light text-white tracking-tight mb-3">Weekly P&L</h3>
+      <ResponsiveContainer width="100%" height={180}>
+        <BarChart data={data}>
+          <XAxis
+            dataKey="name"
+            tick={{ fill: "#52525b", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: "#52525b", fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Bar dataKey="gain" fill="#22c55e" radius={[4, 4, 0, 0]} stackId="pnl" />
+          <Bar dataKey="loss" fill="#ef4444" radius={[0, 0, 4, 4]} stackId="pnl" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

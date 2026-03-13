@@ -18,7 +18,6 @@ const ROLE_ICONS: Record<AgentRole, string> = {
 };
 
 export function Sidebar() {
-  // TODO: Connect to real agent state via SSE
   const agentStates: Record<AgentRole, AgentState> = {
     [AgentRole.Scout]: AgentState.Idle,
     [AgentRole.Analyst]: AgentState.Idle,
@@ -27,19 +26,20 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-56 border-r border-zinc-800 min-h-[calc(100vh-4rem)] p-4 hidden lg:block">
-      <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
+    <aside className="w-56 border-r border-white/[0.06] bg-[#0a0b0f] min-h-[calc(100vh-4rem)] p-4 hidden lg:block">
+      <p className="text-[#ff0033] text-[10px] font-semibold uppercase tracking-widest mb-4">
         Agents
-      </h2>
+      </p>
       <div className="space-y-3">
         {Object.values(AGENTS).filter(a => a.role !== AgentRole.Sentinel || true).map((agent) => (
           <div
             key={agent.role}
-            className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-colors"
+            className="relative p-3 rounded-xl bg-[#0c0d12] border border-white/[0.06] hover:border-white/[0.12] transition-colors overflow-hidden group"
           >
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ff0033]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex items-center gap-2 mb-1">
               <span className="text-lg">{ROLE_ICONS[agent.role]}</span>
-              <span className="font-medium text-sm">{agent.name}</span>
+              <span className="font-medium text-sm text-white">{agent.name}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-zinc-500">
               <span
@@ -47,7 +47,7 @@ export function Sidebar() {
               />
               <span>{agentStates[agent.role]}</span>
             </div>
-            <div className="text-xs text-zinc-600 mt-1">{agent.ensName}</div>
+            <div className="text-[10px] text-zinc-600 mt-1">{agent.ensName}</div>
           </div>
         ))}
       </div>

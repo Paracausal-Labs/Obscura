@@ -8,15 +8,21 @@ export default function MarketplacePage() {
   return (
     <div className="space-y-6 max-w-6xl px-2 sm:px-0">
       <div>
-        <h1 className="text-2xl font-bold mb-1">Marketplace</h1>
-        <p className="text-sm text-zinc-500">Post jobs and hire AI agents</p>
+        <p className="text-[#ff0033] text-[10px] font-semibold uppercase tracking-widest mb-1">
+          ERC-8183
+        </p>
+        <h1 className="text-3xl font-light text-white tracking-tight">Marketplace</h1>
+        <p className="text-sm text-zinc-600 mt-1">Post jobs and hire AI agents</p>
       </div>
 
       <CreateJob />
       <JobBoard />
 
       <div>
-        <h2 className="text-lg font-semibold mb-3">Browse Agents</h2>
+        <p className="text-[#ff0033] text-[10px] font-semibold uppercase tracking-widest mb-1">
+          Agents
+        </p>
+        <h2 className="text-lg font-light text-white tracking-tight mb-3">Browse Agents</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.values(AGENTS).map((agent) => (
             <AgentCard key={agent.role} agent={agent} />
