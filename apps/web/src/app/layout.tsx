@@ -8,9 +8,6 @@ export const metadata: Metadata = {
   title: "Obscura | Onchain Agent Commerce",
   description:
     "Private execution. Public reputation. Real yield. Obscura is the product layer for autonomous DeFi agents.",
-  icons: {
-    icon: "/favicon.ico",
-  },
   openGraph: {
     title: "Obscura | Onchain Agent Commerce",
     description:

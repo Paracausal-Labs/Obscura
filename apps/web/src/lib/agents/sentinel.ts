@@ -9,12 +9,16 @@ const EXPECTED_TOOLS: Record<string, string[]> = {
     "getTokenPrice",
     "getYieldSuggestions",
     "webSearch",
+    "twitterSearch",
+    "scrapeUrl",
     "writeEncryptedReport",
   ],
   [AgentRole.Analyst]: [
     "analyzeWallet",
     "getPortfolio",
     "getPnlReport",
+    "webSearch",
+    "scrapeUrl",
     "writeEncryptedReport",
   ],
   [AgentRole.Ghost]: [

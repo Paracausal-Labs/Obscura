@@ -14,6 +14,8 @@ import {
 import {
   twitterSearch,
   webSearch,
+  scrapeUrl,
+  publishWebsite,
 } from "../integrations/agentcash";
 import { createEncryptedReport } from "../integrations/fileverse";
 
@@ -99,6 +101,31 @@ User preferences (from ENS text records):
           this.emitToolCall("webSearch", jobId);
           toolsCalled.push("webSearch");
           return webSearch(query);
+        },
+      }),
+
+      scrapeUrl: tool({
+        description: "Scrape a URL for detailed content",
+        inputSchema: z.object({
+          url: z.string().describe("URL to scrape"),
+        }),
+        execute: async ({ url }: { url: string }) => {
+          this.emitToolCall("scrapeUrl", jobId);
+          toolsCalled.push("scrapeUrl");
+          return scrapeUrl(url);
+        },
+      }),
+
+      publishWebsite: tool({
+        description: "Create and publish a live website with HTML content. Returns a public URL.",
+        inputSchema: z.object({
+          html: z.string().describe("Complete HTML content including DOCTYPE, head, body, inline CSS"),
+          filename: z.string().default("index.html").describe("Filename"),
+        }),
+        execute: async ({ html, filename }: { html: string; filename: string }) => {
+          this.emitToolCall("publishWebsite", jobId);
+          toolsCalled.push("publishWebsite");
+          return publishWebsite(html, filename);
         },
       }),
 

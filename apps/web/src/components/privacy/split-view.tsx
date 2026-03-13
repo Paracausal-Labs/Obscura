@@ -20,6 +20,7 @@ export function SplitView() {
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-green-500/30 to-transparent" />
         <h3 className="text-sm font-medium text-green-400 mb-3">Your View (Decrypted)</h3>
         <div className="space-y-3 text-sm">
+          <p className="text-[10px] text-zinc-600 italic mb-2">Illustrative example</p>
           <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
             <p className="font-medium text-white">Job #12: Find yield</p>
             <p className="text-xs text-zinc-500">Agent: scout.eth</p>
@@ -44,6 +45,7 @@ export function SplitView() {
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ff0033]/30 to-transparent" />
         <h3 className="text-sm font-medium text-[#ff0033] mb-3">Chain View (Public)</h3>
         <div className="space-y-2 text-sm">
+          <p className="text-[10px] text-zinc-600 italic mb-2">Illustrative example</p>
           {sampleTxns.map((tx, i) => (
             <div key={i} className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] font-mono text-xs">
               <p className="text-zinc-500">{tx.from} → {tx.to}</p>

@@ -11,9 +11,14 @@ dist/
 contracts/out/
 contracts/cache/
 contracts/lib/
+contracts/broadcast/
 
 # Fileverse
 creds/
+
+# Next.js defaults (unused)
+apps/web/src/app/fonts/
+apps/web/README.md
 
 # OS
 .DS_Store

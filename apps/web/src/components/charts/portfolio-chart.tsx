@@ -1,72 +1,71 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import type { AreaData, UTCTimestamp } from "lightweight-charts";
+import { useJobs } from "@/hooks/useJobs";
+import { Badge } from "@/components/ui/badge";
+
+const STATUS_LABELS: Record<number, { label: string; class: string }> = {
+  0: { label: "Open", class: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" },
+  1: { label: "Funded", class: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  2: { label: "Submitted", class: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
+  3: { label: "Completed", class: "bg-green-500/10 text-green-400 border-green-500/20" },
+  4: { label: "Rejected", class: "bg-red-500/10 text-red-400 border-red-500/20" },
+  5: { label: "Expired", class: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20" },
+};
 
 export function PortfolioChart() {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    let cleanup: (() => void) | null = null;
-
-    import("lightweight-charts").then((lc) => {
-      if (!containerRef.current) return;
-
-      const chart = lc.createChart(containerRef.current, {
-        width: containerRef.current.clientWidth,
-        height: 280,
-        layout: {
-          background: { color: "transparent" },
-          textColor: "#52525b",
-        },
-        grid: {
-          vertLines: { color: "rgba(255,255,255,0.03)" },
-          horzLines: { color: "rgba(255,255,255,0.03)" },
-        },
-        rightPriceScale: { borderColor: "rgba(255,255,255,0.06)" },
-        timeScale: { borderColor: "rgba(255,255,255,0.06)" },
-      });
-
-      const series = chart.addSeries(lc.AreaSeries, {
-        topColor: "rgba(255, 0, 51, 0.15)",
-        bottomColor: "rgba(255, 0, 51, 0.0)",
-        lineColor: "#ff0033",
-        lineWidth: 2,
-      });
-
-      const now = Math.floor(Date.now() / 1000);
-      const data: AreaData<UTCTimestamp>[] = [];
-      let value = 11000;
-      for (let i = 30; i >= 0; i--) {
-        value += (Math.random() - 0.45) * 200;
-        value = Math.max(10000, Math.min(14000, value));
-        data.push({
-          time: (now - i * 86400) as UTCTimestamp,
-          value: Math.round(value),
-        });
-      }
-      series.setData(data);
-      chart.timeScale().fitContent();
-
-      cleanup = () => chart.remove();
-    });
-
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, []);
+  const { jobs, loading } = useJobs();
 
   return (
     <div className="relative rounded-[2rem] border border-white/[0.06] bg-[#0c0d12] p-5 overflow-hidden">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ff0033]/30 to-transparent" />
       <div className="absolute -bottom-20 -right-20 w-60 h-60 bg-[#ff0033] rounded-full blur-[100px] opacity-[0.04] pointer-events-none" />
       <p className="text-[#ff0033] text-[10px] font-semibold uppercase tracking-widest mb-1">
-        Portfolio
+        On-Chain
       </p>
-      <h3 className="text-lg font-light text-white tracking-tight mb-3">Portfolio Value</h3>
-      <div ref={containerRef} className="w-full" />
+      <h3 className="text-lg font-light text-white tracking-tight mb-3">Recent Jobs</h3>
+      {loading ? (
+        <div className="space-y-2">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-10 rounded-lg bg-white/[0.03] animate-pulse" />
+          ))}
+        </div>
+      ) : jobs.length === 0 ? (
+        <p className="text-xs text-zinc-600 py-8 text-center">
+          No jobs yet — post one from the Marketplace.
+        </p>
+      ) : (
+        <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+          {jobs.slice(0, 10).map((job) => {
+            const status = STATUS_LABELS[job.status] ?? STATUS_LABELS[0];
+            const budgetEth = Number(job.budget) / 1e6;
+            return (
+              <div
+                key={String(job.id)}
+                className="flex items-center justify-between rounded-xl bg-white/[0.02] border border-white/[0.04] px-3 py-2"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-xs text-zinc-500 font-mono shrink-0">
+                    #{String(job.id)}
+                  </span>
+                  <span className="text-sm text-zinc-300 truncate max-w-[180px]">
+                    {job.description || "—"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {budgetEth > 0 && (
+                    <span className="text-xs text-zinc-500 font-mono">
+                      {budgetEth.toFixed(2)} USDC
+                    </span>
+                  )}
+                  <Badge variant="outline" className={status.class}>
+                    {status.label}
+                  </Badge>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

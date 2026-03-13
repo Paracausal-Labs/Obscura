@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { pad, stringToHex } from "viem";
 import { getBaseSepoliaClient } from "@/lib/config/chains";
 import { reputationConfig } from "@/lib/contracts/reputation";
 import { AGENTS } from "@/lib/config/agents";
@@ -25,11 +26,14 @@ export function useAgentReputation() {
 
       const results = await Promise.allSettled(
         Object.values(AGENTS).map(async (agent) => {
+          const tag1 = pad(stringToHex("obscura.job"), { size: 32 });
+          const tag2 = pad(stringToHex(agent.role), { size: 32 });
+
           try {
             const result = await client.readContract({
               ...reputationConfig,
               functionName: "getSummary",
-              args: [BigInt(agent.id), [], "0x0000000000000000000000000000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000000000000000000000000000"],
+              args: [BigInt(agent.id), [], tag1, tag2],
             }) as [bigint, bigint];
 
             return {
@@ -40,13 +44,12 @@ export function useAgentReputation() {
               reviewCount: Number(result[1]),
             };
           } catch {
-            // Return default if contract call fails
             return {
               agentId: agent.id,
               role: agent.role,
               name: agent.name,
-              avgScore: 75 + Math.floor(Math.random() * 20),
-              reviewCount: Math.floor(Math.random() * 30) + 5,
+              avgScore: 0,
+              reviewCount: 0,
             };
           }
         })
@@ -59,14 +62,13 @@ export function useAgentReputation() {
 
       setReputations(reps);
     } catch {
-      // Use fallback data
       setReputations(
         Object.values(AGENTS).map((agent) => ({
           agentId: agent.id,
           role: agent.role,
           name: agent.name,
-          avgScore: 75 + Math.floor(Math.random() * 20),
-          reviewCount: Math.floor(Math.random() * 30) + 5,
+          avgScore: 0,
+          reviewCount: 0,
         }))
       );
     } finally {

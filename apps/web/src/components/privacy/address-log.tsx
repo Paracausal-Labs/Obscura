@@ -14,6 +14,7 @@ export function AddressLog() {
         Execution log
       </p>
       <h3 className="text-lg font-light text-white tracking-tight mb-3">Execution Intermediary Log</h3>
+      <p className="text-[10px] text-zinc-600 italic mb-2">Illustrative example</p>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>

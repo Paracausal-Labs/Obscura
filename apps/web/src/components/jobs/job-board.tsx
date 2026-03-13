@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useActivityStream } from "@/hooks/useActivityStream";
+import { useAccount } from "wagmi";
 import { RateAgent } from "./rate-agent";
 import { ViewReport } from "./view-report";
 import type { AgentRole } from "@obscura/shared";
@@ -20,6 +21,7 @@ const SETTLED_TYPES = new Set(["complete", "reject"]);
 
 export function JobBoard() {
   const { events } = useActivityStream();
+  const { address } = useAccount();
 
   // Group events by jobId to show job status
   const jobEvents = events.filter((e) => e.jobId);
@@ -40,6 +42,7 @@ export function JobBoard() {
         (e) => e.type === "submit" && e.metadata?.fileverseFileId
       );
       const fileId = submitEvent?.metadata?.fileverseFileId as string | undefined;
+      const clientAddress = pickupEvent?.metadata?.client as string | undefined;
       return {
         jobId,
         latestEvent: evts[0],
@@ -47,6 +50,7 @@ export function JobBoard() {
         status: evts[0].type,
         isSettled: evts.some((e) => SETTLED_TYPES.has(e.type)),
         fileId,
+        clientAddress,
       };
     })
     .slice(0, 20);
@@ -84,7 +88,7 @@ export function JobBoard() {
                       </Badge>
                     </div>
                   </div>
-                  {job.isSettled && (
+                  {job.isSettled && address?.toLowerCase() === job.clientAddress?.toLowerCase() && (
                     <div className="mt-2 pt-2 border-t border-white/[0.04] space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-zinc-600">Rate this agent (ERC-8004):</span>

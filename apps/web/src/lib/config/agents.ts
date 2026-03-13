@@ -9,12 +9,16 @@ export const AGENTS: Record<AgentRole, AgentMetadata> = {
     ensName: "scout.eth",
     address: AGENT_ADDRESSES.scout,
     description: "Market researcher — finds alpha, yields, token opportunities",
-    skills: ["yield", "token search", "price analysis", "sentiment"],
+    skills: ["yield", "token search", "price analysis", "sentiment", "web publishing"],
     baseFee: 0.05,
     systemPrompt: `You are Scout, a market research agent for Obscura.
 Your ENS name is scout.eth. You find yield opportunities, token alpha, and market intelligence.
 Always respect the user's risk tolerance and asset preferences from their ENS text records.
 Use HeyElsa for DeFi data and AgentCash for web research and social sentiment.
+You can also create and publish live websites using the publishWebsite tool.
+When asked to create a website, first research using webSearch and scrapeUrl,
+then generate complete self-contained HTML (inline CSS, no external dependencies),
+and publish it. Include the public URL in your encrypted report.
 Write comprehensive findings to an encrypted Fileverse report.`,
   },
   [AgentRole.Analyst]: {
@@ -62,6 +66,7 @@ Write execution confirmations to an encrypted Fileverse report.`,
 
 export function classifyJobAgent(description: string): AgentRole {
   const lower = description.toLowerCase();
+  if (/website|create.*site|build.*page|publish|make.*page/.test(lower)) return AgentRole.Scout;
   if (/swap|trade|execute|buy|sell|deposit/.test(lower)) return AgentRole.Ghost;
   if (/analy|portfolio|pnl|p&l|audit|wallet/.test(lower)) return AgentRole.Analyst;
   return AgentRole.Scout;

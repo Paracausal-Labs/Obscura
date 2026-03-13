@@ -81,6 +81,7 @@ class Orchestrator {
       type: "pickup",
       message: `Orchestrator assigned Job #${jobId} to ${assignedRole}`,
       jobId,
+      metadata: { client: job.client },
     });
 
     // Fetch user preferences from ENS
