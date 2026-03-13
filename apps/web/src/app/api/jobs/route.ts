@@ -9,7 +9,7 @@ import { agentJobsConfig } from "@/lib/contracts/agent-jobs";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { jobId, client, userSignature, userEnsName } = body;
+    const { jobId, client, userSignature } = body;
 
     if (!userSignature) {
       return NextResponse.json(
@@ -103,11 +103,25 @@ export async function POST(req: Request) {
       status: JobStatus.Funded,
     };
 
+    // Always resolve ENS from the verified on-chain client address
+    // Never trust caller-supplied userEnsName
     const result = await orchestrator.processJob(
       job,
-      userEnsName || client,
+      onChainJob.client,
       userSignature
     );
+
+    if (!result.onChainSettled) {
+      return NextResponse.json(
+        {
+          error: "On-chain settlement failed",
+          detail: result.onChainError,
+          jobId: job.id.toString(),
+          agentRole: result.assignedRole,
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({
       jobId: job.id.toString(),

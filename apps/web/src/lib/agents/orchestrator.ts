@@ -5,7 +5,7 @@ import type { AgentContext, ActivityEmitter, OrchestratorState } from "./types";
 import { classifyJobAgent } from "../config/agents";
 import { getAgentRoleByAddress } from "../config/addresses";
 import { getUserPreferences } from "../integrations/ens";
-import { getAgentWalletClient, getBaseSepoliaClient } from "../config/chains";
+import { getWalletClientForRole, getBaseSepoliaClient } from "../config/chains";
 import { agentJobsConfig } from "../contracts/agent-jobs";
 import { ScoutAgent } from "./scout";
 import { AnalystAgent } from "./analyst";
@@ -16,6 +16,14 @@ import { BaseAgent } from "./base-agent";
 type ActivityCallback = (event: ActivityEvent) => void;
 
 let eventCounter = 0;
+
+export interface ProcessJobResult {
+  agentResult: AgentResult;
+  sentinelResult: AgentResult;
+  assignedRole: AgentRole;
+  onChainSettled: boolean;
+  onChainError?: string;
+}
 
 class Orchestrator {
   private state: OrchestratorState = {
@@ -45,11 +53,7 @@ class Orchestrator {
     job: Job,
     userEnsName: string,
     userSignature: string
-  ): Promise<{
-    agentResult: AgentResult;
-    sentinelResult: AgentResult;
-    assignedRole: AgentRole;
-  }> {
+  ): Promise<ProcessJobResult> {
     const jobId = Number(job.id);
 
     // Use on-chain provider address if set, fall back to description classification
@@ -82,7 +86,17 @@ class Orchestrator {
     const agentResult = await agent.run(context);
 
     // Submit deliverable on-chain (provider role)
-    await this.submitOnChain(job, agentResult, jobId);
+    const submitTx = await this.submitOnChain(job, agentResult, assignedRole, jobId);
+    if (!submitTx.ok) {
+      this.state.activeJobs.delete(jobId);
+      return {
+        agentResult,
+        sentinelResult: agentResult,
+        assignedRole,
+        onChainSettled: false,
+        onChainError: `submit failed: ${submitTx.error}`,
+      };
+    }
 
     // Build evaluation context for Sentinel
     const evalPayload = JSON.stringify({
@@ -111,22 +125,41 @@ class Orchestrator {
     const sentinel = new SentinelAgent(this.emitActivity);
     const sentinelResult = await sentinel.run(sentinelContext);
 
+    // Resolve evaluator role from on-chain evaluator address
+    const evaluatorRole = getAgentRoleByAddress(job.evaluator) ?? AgentRole.Sentinel;
+
     // Complete or reject on-chain (evaluator role)
-    await this.settleOnChain(job, sentinelResult, jobId);
+    const settleTx = await this.settleOnChain(job, sentinelResult, evaluatorRole, jobId);
+    if (!settleTx.ok) {
+      this.state.activeJobs.delete(jobId);
+      return {
+        agentResult,
+        sentinelResult,
+        assignedRole,
+        onChainSettled: false,
+        onChainError: `${sentinelResult.success ? "complete" : "reject"} failed: ${settleTx.error}`,
+      };
+    }
 
     // Clean up active job tracking
     this.state.activeJobs.delete(jobId);
 
-    return { agentResult, sentinelResult, assignedRole };
+    return {
+      agentResult,
+      sentinelResult,
+      assignedRole,
+      onChainSettled: true,
+    };
   }
 
   private async submitOnChain(
     job: Job,
     agentResult: AgentResult,
+    providerRole: AgentRole,
     jobId: number
-  ): Promise<void> {
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
     try {
-      const walletClient = getAgentWalletClient();
+      const walletClient = getWalletClientForRole(providerRole);
       const publicClient = getBaseSepoliaClient();
 
       const deliverableContent = agentResult.deliverableHash || "no-deliverable";
@@ -140,29 +173,33 @@ class Orchestrator {
       await publicClient.waitForTransactionReceipt({ hash });
 
       this.emitActivity({
-        agent: AgentRole.Sentinel,
+        agent: providerRole,
         type: "tool_call",
         message: `On-chain submit for Job #${jobId} (tx: ${hash.slice(0, 10)}...)`,
         jobId,
       });
+
+      return { ok: true };
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
       this.emitActivity({
-        agent: AgentRole.Sentinel,
+        agent: providerRole,
         type: "error",
         message: `On-chain submit failed for Job #${jobId}: ${msg}`,
         jobId,
       });
+      return { ok: false, error: msg };
     }
   }
 
   private async settleOnChain(
     job: Job,
     sentinelResult: AgentResult,
+    evaluatorRole: AgentRole,
     jobId: number
-  ): Promise<void> {
+  ): Promise<{ ok: true } | { ok: false; error: string }> {
     try {
-      const walletClient = getAgentWalletClient();
+      const walletClient = getWalletClientForRole(evaluatorRole);
       const publicClient = getBaseSepoliaClient();
 
       const reasonBytes = keccak256(toHex(sentinelResult.metadata.reasoning));
@@ -176,19 +213,22 @@ class Orchestrator {
       await publicClient.waitForTransactionReceipt({ hash });
 
       this.emitActivity({
-        agent: AgentRole.Sentinel,
+        agent: evaluatorRole,
         type: sentinelResult.success ? "complete" : "reject",
         message: `On-chain ${functionName} for Job #${jobId} (tx: ${hash.slice(0, 10)}...)`,
         jobId,
       });
+
+      return { ok: true };
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Unknown error";
       this.emitActivity({
-        agent: AgentRole.Sentinel,
+        agent: evaluatorRole,
         type: "error",
         message: `On-chain ${sentinelResult.success ? "complete" : "reject"} failed for Job #${jobId}: ${msg}`,
         jobId,
       });
+      return { ok: false, error: msg };
     }
   }
 
