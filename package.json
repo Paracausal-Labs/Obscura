@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "turbo": "^2.8.16"
+  },
+  "dependencies": {
+    "lucide-react": "^0.577.0"
   }
 }
