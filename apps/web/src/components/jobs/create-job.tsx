@@ -6,8 +6,10 @@ import {
   useWriteContract,
   usePublicClient,
   useSignMessage,
+  useEnsName,
 } from "wagmi";
 import { erc20Abi, parseEventLogs, zeroAddress } from "viem";
+import { sepolia } from "viem/chains";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,7 @@ export function CreateJob() {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { signMessageAsync } = useSignMessage();
+  const { data: ensName } = useEnsName({ address, chainId: sepolia.id });
 
   const suggestedAgent = description ? classifyJobAgent(description) : null;
   const agentMeta = suggestedAgent ? AGENTS[suggestedAgent] : null;
@@ -126,6 +129,7 @@ export function CreateJob() {
           expiredAt: expiredAt.toString(),
           client: address,
           userSignature,
+          userEnsName: ensName || undefined,
         }),
       });
 

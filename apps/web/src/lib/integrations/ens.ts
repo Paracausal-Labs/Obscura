@@ -11,6 +11,15 @@ const ENS_KEYS = {
   preferred: "agent.preferred",
 } as const;
 
+const DEFAULT_PREFS: UserPrefs = {
+  risk: "moderate",
+  assets: "ETH,USDC",
+  maxTrade: "500",
+  protocols: "aave,compound",
+  killswitch: false,
+  preferred: "",
+};
+
 export async function getEnsText(
   name: string,
   key: string
@@ -24,7 +33,28 @@ export async function getEnsText(
   }
 }
 
-export async function getUserPreferences(ensName: string): Promise<UserPrefs> {
+async function reverseResolveAddress(address: string): Promise<string | null> {
+  const client = getEthSepoliaClient();
+  try {
+    const name = await client.getEnsName({
+      address: address as `0x${string}`,
+    });
+    return name ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getUserPreferences(ensNameOrAddress: string): Promise<UserPrefs> {
+  let ensName = ensNameOrAddress;
+
+  // If raw address, try reverse resolution
+  if (ensNameOrAddress.startsWith("0x")) {
+    const resolved = await reverseResolveAddress(ensNameOrAddress);
+    if (!resolved) return DEFAULT_PREFS;
+    ensName = resolved;
+  }
+
   const [risk, assets, maxTrade, protocols, killswitch, preferred] =
     await Promise.all([
       getEnsText(ensName, ENS_KEYS.risk),
@@ -36,16 +66,21 @@ export async function getUserPreferences(ensName: string): Promise<UserPrefs> {
     ]);
 
   return {
-    risk: risk || "moderate",
-    assets: assets || "ETH,USDC",
-    maxTrade: maxTrade || "500",
-    protocols: protocols || "aave,compound",
+    risk: risk || DEFAULT_PREFS.risk,
+    assets: assets || DEFAULT_PREFS.assets,
+    maxTrade: maxTrade || DEFAULT_PREFS.maxTrade,
+    protocols: protocols || DEFAULT_PREFS.protocols,
     killswitch: killswitch === "true",
-    preferred: preferred || "",
+    preferred: preferred || DEFAULT_PREFS.preferred,
   };
 }
 
-export async function checkKillSwitch(ensName: string): Promise<boolean> {
-  const value = await getEnsText(ensName, ENS_KEYS.killswitch);
+export async function checkKillSwitch(ensNameOrAddress: string): Promise<boolean> {
+  if (ensNameOrAddress.startsWith("0x")) {
+    const resolved = await reverseResolveAddress(ensNameOrAddress);
+    if (!resolved) return false;
+    ensNameOrAddress = resolved;
+  }
+  const value = await getEnsText(ensNameOrAddress, ENS_KEYS.killswitch);
   return value === "true";
 }
