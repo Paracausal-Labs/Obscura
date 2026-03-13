@@ -30,9 +30,14 @@ export function useJobs() {
         functionName: "jobCount",
       }) as bigint;
 
+      if (count === 0n) {
+        setJobs([]);
+        return;
+      }
+
       const jobPromises = [];
-      const start = count > 20n ? count - 20n : 1n;
-      for (let i = count; i >= start; i--) {
+      const start = count > 20n ? count - 20n : 0n;
+      for (let i = count - 1n; i >= start; i--) {
         jobPromises.push(
           client.readContract({
             ...agentJobsConfig,
