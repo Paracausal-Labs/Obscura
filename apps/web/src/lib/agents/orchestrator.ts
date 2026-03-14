@@ -8,6 +8,7 @@ import { getUserPreferences } from "../integrations/ens";
 import { getWalletClientForRole, getBaseSepoliaClient } from "../config/chains";
 import { agentJobsConfig } from "../contracts/agent-jobs";
 import { reputationConfig } from "../contracts/reputation";
+import { storeFileId } from "../integrations/local-reports";
 import { ScoutAgent } from "./scout";
 import { AnalystAgent } from "./analyst";
 import { GhostAgent } from "./ghost";
@@ -101,8 +102,9 @@ class Orchestrator {
     const agent = this.createAgent(assignedRole);
     const agentResult = await agent.run(context);
 
-    // Emit report availability for frontend
+    // Persist fileId and emit report availability for frontend
     if (agentResult.fileverseFileId) {
+      storeFileId(String(jobId), agentResult.fileverseFileId);
       this.emitActivity({
         agent: assignedRole,
         type: "submit",

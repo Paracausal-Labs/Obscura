@@ -21,3 +21,24 @@ export function storeLocalReport(jobId: string, encryptedContent: string) {
 export function getLocalReport(jobId: string): string | null {
   return reports.get(jobId) ?? null;
 }
+
+// --- FileId registry: maps jobId → fileverseFileId (persists across requests) ---
+
+const globalForFileIds = globalThis as unknown as {
+  fileIdRegistry: Map<string, string> | undefined;
+};
+
+const fileIds = globalForFileIds.fileIdRegistry ?? new Map<string, string>();
+globalForFileIds.fileIdRegistry = fileIds;
+
+export function storeFileId(jobId: string, fileId: string) {
+  fileIds.set(jobId, fileId);
+}
+
+export function getFileId(jobId: string): string | null {
+  return fileIds.get(jobId) ?? null;
+}
+
+export function getAllFileIds(): Record<string, string> {
+  return Object.fromEntries(fileIds);
+}

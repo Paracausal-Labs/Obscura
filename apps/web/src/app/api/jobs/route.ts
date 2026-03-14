@@ -152,6 +152,8 @@ export async function GET(req: Request) {
   if (origin && !origin.includes("localhost") && !origin.includes("127.0.0.1")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
   }
+  const { getAllFileIds } = await import("@/lib/integrations/local-reports");
   const log = orchestrator.getActivityLog();
-  return NextResponse.json({ activity: log });
+  const fileIds = getAllFileIds();
+  return NextResponse.json({ activity: log, fileIds });
 }

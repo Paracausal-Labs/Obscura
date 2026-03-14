@@ -1,8 +1,8 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { useJobs } from "@/hooks/useJobs";
 import { useAccount } from "wagmi";
-import { useActivityStream } from "@/hooks/useActivityStream";
 import { getAgentRoleByAddress } from "@/lib/config/addresses";
 import { ViewReport } from "./view-report";
 
@@ -18,15 +18,22 @@ const STATUS_MAP: Record<number, { label: string; class: string }> = {
 export function JobHistory() {
   const { jobs, loading, refetch } = useJobs();
   const { address } = useAccount();
-  const { events } = useActivityStream();
+  const [fileIdMap, setFileIdMap] = useState<Record<string, string>>({});
 
-  // Build fileId lookup from SSE events (only way to get fileIds for completed jobs)
-  const fileIdMap = new Map<number, string>();
-  for (const evt of events) {
-    if (evt.type === "submit" && evt.jobId && evt.metadata?.fileverseFileId) {
-      fileIdMap.set(evt.jobId, evt.metadata.fileverseFileId as string);
-    }
-  }
+  const fetchFileIds = useCallback(async () => {
+    try {
+      const res = await fetch("/api/jobs");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.fileIds) setFileIdMap(data.fileIds);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { fetchFileIds(); }, [fetchFileIds]);
+
+  // Re-fetch fileIds when jobs change (new job completed)
+  useEffect(() => { fetchFileIds(); }, [jobs, fetchFileIds]);
 
   const myJobs = jobs.filter(
     (j) => j.client.toLowerCase() === (address?.toLowerCase() ?? "")
@@ -44,7 +51,7 @@ export function JobHistory() {
           <h3 className="text-2xl font-light text-white tracking-tight">Job History</h3>
         </div>
         <button
-          onClick={refetch}
+          onClick={() => { refetch(); fetchFileIds(); }}
           className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02] text-[10px] font-mono text-zinc-500 uppercase tracking-widest hover:border-[#ff0033]/20 hover:text-zinc-300 transition-all"
         >
           Refresh
@@ -69,7 +76,7 @@ export function JobHistory() {
             const status = STATUS_MAP[job.status] ?? STATUS_MAP[0];
             const agentRole = getAgentRoleByAddress(job.provider);
             const agentName = agentRole ?? "unknown";
-            const fileId = fileIdMap.get(Number(job.id));
+            const fileId = fileIdMap[String(Number(job.id))];
             const isSettled = job.status === 3 || job.status === 4;
             const budgetUsdc = (Number(job.budget) / 1e6).toFixed(2);
 
