@@ -3,7 +3,7 @@ import { AGENT_ADDRESSES } from "./addresses";
 
 export const AGENTS: Record<AgentRole, AgentMetadata> = {
   [AgentRole.Scout]: {
-    id: 1,
+    id: 1843,
     role: AgentRole.Scout,
     name: "Scout",
     ensName: "scout.eth",
@@ -11,18 +11,29 @@ export const AGENTS: Record<AgentRole, AgentMetadata> = {
     description: "Market researcher — finds alpha, yields, token opportunities",
     skills: ["yield", "token search", "price analysis", "sentiment", "web publishing"],
     baseFee: 0.05,
-    systemPrompt: `You are Scout, a market research agent for Obscura.
+    systemPrompt: `You are Scout, a privacy-first DeFi research agent for Obscura.
 Your ENS name is scout.eth. You find yield opportunities, token alpha, and market intelligence.
 Always respect the user's risk tolerance and asset preferences from their ENS text records.
-Use HeyElsa for DeFi data and AgentCash for web research and social sentiment.
+
+TOOL PRIORITY:
+1. ALWAYS start with defiYields and defiProtocol — these are free, fast, and reliable (DeFiLlama data).
+2. Use webSearch/twitterSearch for supplementary research (these are paid x402 tools and may fail).
+3. If any tool returns an error, DO NOT apologize or give up. Use the data you have and your knowledge.
+
+WORKFLOW:
+1. Call defiYields (filter by chain/stablecoin as relevant) to get live yield data
+2. Call defiProtocol for details on top protocols found
+3. Optionally call webSearch or twitterSearch for sentiment (skip if they fail)
+4. Call writeEncryptedReport with a comprehensive analysis
+
 You can also create and publish live websites using the publishWebsite tool.
-When asked to create a website, first research using webSearch and scrapeUrl,
-then generate complete self-contained HTML (inline CSS, no external dependencies),
-and publish it. Include the public URL in your encrypted report.
-Write comprehensive findings to an encrypted Fileverse report.`,
+
+IMPORTANT: You MUST call writeEncryptedReport as your FINAL tool call.
+NEVER write a report that says "tools failed" or "I cannot help". Always produce actionable analysis
+using the data you gathered plus your DeFi knowledge. A partial report is better than an apology.`,
   },
   [AgentRole.Analyst]: {
-    id: 2,
+    id: 1846,
     role: AgentRole.Analyst,
     name: "Analyst",
     ensName: "analyst.eth",
@@ -30,14 +41,20 @@ Write comprehensive findings to an encrypted Fileverse report.`,
     description: "Deep portfolio and wallet analysis",
     skills: ["wallet analysis", "portfolio audit", "P&L", "risk assessment"],
     baseFee: 0.08,
-    systemPrompt: `You are Analyst, a portfolio analysis agent for Obscura.
+    systemPrompt: `You are Analyst, a privacy-first portfolio analysis agent for Obscura.
 Your ENS name is analyst.eth. You perform deep wallet analysis, portfolio audits, and P&L reports.
 Always respect the user's risk tolerance and asset preferences from their ENS text records.
-Cross-reference on-chain data with protocol documentation and social signals.
-Write detailed analysis to an encrypted Fileverse report.`,
+
+TOOL PRIORITY:
+1. Use defiYields and defiProtocol (DeFiLlama, free) for market context and yield data.
+2. Use analyzeWallet, getPortfolio, getPnlReport (HeyElsa, x402) for wallet-specific analysis.
+3. If x402 tools fail, use your DeFi knowledge to provide analysis based on DeFiLlama data.
+
+IMPORTANT: You MUST call writeEncryptedReport as your FINAL tool call.
+NEVER write a report that says "tools failed". Always produce actionable analysis.`,
   },
   [AgentRole.Ghost]: {
-    id: 3,
+    id: 1844,
     role: AgentRole.Ghost,
     name: "Ghost",
     ensName: "ghost.eth",
@@ -52,7 +69,7 @@ Get swap quotes, verify against user preferences, execute through BitGo signing 
 Write execution confirmations to an encrypted Fileverse report.`,
   },
   [AgentRole.Sentinel]: {
-    id: 4,
+    id: 1845,
     role: AgentRole.Sentinel,
     name: "Sentinel",
     ensName: "sentinel.eth",

@@ -17,7 +17,14 @@ import {
   scrapeUrl,
   publishWebsite,
 } from "../integrations/agentcash";
+import {
+  getTopYields as llamaYields,
+  getProtocolTvl as llamaProtocol,
+  getStablecoinYields as llamaStableYields,
+} from "../integrations/defillama";
 import { createEncryptedReport } from "../integrations/fileverse";
+import { deriveKeyFromSignature, encrypt, encodePayload } from "../integrations/crypto";
+import { storeLocalReport } from "../integrations/local-reports";
 
 export class ScoutAgent extends BaseAgent {
   role = AgentRole.Scout;
@@ -42,20 +49,58 @@ User preferences (from ENS text records):
     let fileverseFileId = "";
 
     const tools = {
+      // --- Reliable free tools (DeFiLlama) — use these first ---
+      defiYields: tool({
+        description:
+          "Get top DeFi yield opportunities from DeFiLlama. Use this FIRST for any yield/APY research. Filter by chain or stablecoin.",
+        inputSchema: z.object({
+          chain: z.string().optional().describe("Filter by chain (e.g. 'Base', 'Ethereum')"),
+          stablecoinOnly: z.boolean().default(false).describe("Only show stablecoin pools"),
+        }),
+        execute: async ({ chain, stablecoinOnly }: { chain?: string; stablecoinOnly: boolean }) => {
+          this.emitToolCall("defiYields", jobId);
+          toolsCalled.push("defiYields");
+          try {
+            if (stablecoinOnly) return await llamaStableYields();
+            return await llamaYields(chain);
+          } catch (e) {
+            return { error: `DeFiLlama yields unavailable: ${e instanceof Error ? e.message : "unknown"}` };
+          }
+        },
+      }),
+
+      defiProtocol: tool({
+        description:
+          "Get TVL, description, and details for a DeFi protocol from DeFiLlama (e.g. 'aave', 'aerodrome', 'morpho').",
+        inputSchema: z.object({
+          protocol: z.string().describe("Protocol slug (e.g. 'aave', 'uniswap', 'aerodrome')"),
+        }),
+        execute: async ({ protocol }: { protocol: string }) => {
+          this.emitToolCall("defiProtocol", jobId);
+          toolsCalled.push("defiProtocol");
+          try { return await llamaProtocol(protocol); }
+          catch (e) {
+            return { error: `DeFiLlama protocol lookup failed: ${e instanceof Error ? e.message : "unknown"}` };
+          }
+        },
+      }),
+
+      // --- Paid tools (x402 micropayments) — fallback if free tools insufficient ---
       searchToken: tool({
-        description: "Search for a token by name or symbol",
+        description: "Search for a token by name or symbol (HeyElsa, paid via x402)",
         inputSchema: z.object({
           query: z.string().describe("Token name or symbol to search"),
         }),
         execute: async ({ query }: { query: string }) => {
           this.emitToolCall("searchToken", jobId);
           toolsCalled.push("searchToken");
-          return searchToken(query);
+          try { return await searchToken(query); }
+          catch (e) { return { error: `searchToken failed (x402): ${e instanceof Error ? e.message : "payment/network error"}. Use defiYields or defiProtocol instead.` }; }
         },
       }),
 
       getTokenPrice: tool({
-        description: "Get the current price of a token",
+        description: "Get the current price of a token (HeyElsa, paid via x402)",
         inputSchema: z.object({
           token: z.string().describe("Token symbol or address"),
           chain: z.string().default("base").describe("Chain name"),
@@ -63,12 +108,13 @@ User preferences (from ENS text records):
         execute: async ({ token, chain }: { token: string; chain: string }) => {
           this.emitToolCall("getTokenPrice", jobId);
           toolsCalled.push("getTokenPrice");
-          return getTokenPrice(token, chain);
+          try { return await getTokenPrice(token, chain); }
+          catch (e) { return { error: `getTokenPrice failed (x402): ${e instanceof Error ? e.message : "payment/network error"}` }; }
         },
       }),
 
       getYieldSuggestions: tool({
-        description: "Get yield farming suggestions for a wallet",
+        description: "Get personalized yield suggestions for a wallet (HeyElsa, paid via x402). Prefer defiYields for general research.",
         inputSchema: z.object({
           walletAddress: z.string().describe("Wallet address"),
           chain: z.string().default("base").describe("Chain name"),
@@ -76,43 +122,47 @@ User preferences (from ENS text records):
         execute: async ({ walletAddress, chain }: { walletAddress: string; chain: string }) => {
           this.emitToolCall("getYieldSuggestions", jobId);
           toolsCalled.push("getYieldSuggestions");
-          return getYieldSuggestions(walletAddress, chain);
+          try { return await getYieldSuggestions(walletAddress, chain); }
+          catch (e) { return { error: `getYieldSuggestions failed (x402): ${e instanceof Error ? e.message : "payment/network error"}. Use defiYields instead.` }; }
         },
       }),
 
       twitterSearch: tool({
-        description: "Search Twitter/X for sentiment and alpha",
+        description: "Search Twitter/X for sentiment and alpha (paid via x402)",
         inputSchema: z.object({
           query: z.string().describe("Search query for Twitter"),
         }),
         execute: async ({ query }: { query: string }) => {
           this.emitToolCall("twitterSearch", jobId);
           toolsCalled.push("twitterSearch");
-          return twitterSearch(query);
+          try { return await twitterSearch(query); }
+          catch (e) { return { error: `twitterSearch failed (x402): ${e instanceof Error ? e.message : "payment/network error"}. Continue with other data sources.` }; }
         },
       }),
 
       webSearch: tool({
-        description: "Search the web for research and news",
+        description: "Search the web for research and news (paid via x402). Try defiYields/defiProtocol first for DeFi data.",
         inputSchema: z.object({
           query: z.string().describe("Search query"),
         }),
         execute: async ({ query }: { query: string }) => {
           this.emitToolCall("webSearch", jobId);
           toolsCalled.push("webSearch");
-          return webSearch(query);
+          try { return await webSearch(query); }
+          catch (e) { return { error: `webSearch failed (x402): ${e instanceof Error ? e.message : "payment/network error"}. Use defiYields or defiProtocol for DeFi data.` }; }
         },
       }),
 
       scrapeUrl: tool({
-        description: "Scrape a URL for detailed content",
+        description: "Scrape a URL for detailed content (paid via x402)",
         inputSchema: z.object({
           url: z.string().describe("URL to scrape"),
         }),
         execute: async ({ url }: { url: string }) => {
           this.emitToolCall("scrapeUrl", jobId);
           toolsCalled.push("scrapeUrl");
-          return scrapeUrl(url);
+          try { return await scrapeUrl(url); }
+          catch (e) { return { error: `scrapeUrl failed: ${e instanceof Error ? e.message : "network error"}` }; }
         },
       }),
 
@@ -125,7 +175,8 @@ User preferences (from ENS text records):
         execute: async ({ html, filename }: { html: string; filename: string }) => {
           this.emitToolCall("publishWebsite", jobId);
           toolsCalled.push("publishWebsite");
-          return publishWebsite(html, filename);
+          try { return await publishWebsite(html, filename); }
+          catch (e) { return { error: `publishWebsite failed: ${e instanceof Error ? e.message : "upload error"}` }; }
         },
       }),
 
@@ -138,15 +189,26 @@ User preferences (from ENS text records):
         execute: async ({ title, content }: { title: string; content: string }) => {
           this.emitToolCall("writeEncryptedReport", jobId);
           toolsCalled.push("writeEncryptedReport");
-          const result = await createEncryptedReport(
-            title,
-            content,
-            userSignature,
-            job.id.toString()
-          );
-          deliverableHash = result.encryptedContent;
-          fileverseFileId = result.fileId;
-          return { fileId: result.fileId, status: "saved" };
+          try {
+            const result = await createEncryptedReport(
+              title,
+              content,
+              userSignature,
+              job.id.toString()
+            );
+            deliverableHash = result.encryptedContent;
+            fileverseFileId = result.fileId;
+            return { fileId: result.fileId, status: "saved" };
+          } catch {
+            // Fileverse upload failed — encrypt locally as fallback
+            const key = deriveKeyFromSignature(userSignature, job.id.toString());
+            const markdown = `# ${title}\n\n${content}\n\n---\n*Generated by Obscura at ${new Date().toISOString()}*`;
+            const payload = encrypt(markdown, key);
+            deliverableHash = encodePayload(payload);
+            fileverseFileId = `local:${job.id}`;
+            storeLocalReport(job.id.toString(), deliverableHash);
+            return { fileId: fileverseFileId, status: "saved (local fallback)" };
+          }
         },
       }),
     };
@@ -155,8 +217,31 @@ User preferences (from ENS text records):
       system: systemPrompt,
       prompt: job.description,
       tools,
-      maxSteps: 5,
+      maxSteps: 10,
     });
+
+    // If the model didn't call writeEncryptedReport, force a report with its text output
+    if (deliverableHash === "" && result.text) {
+      this.emitToolCall("writeEncryptedReport", jobId);
+      toolsCalled.push("writeEncryptedReport");
+      try {
+        const fvResult = await createEncryptedReport(
+          `Scout Report — Job #${jobId}`,
+          result.text,
+          userSignature,
+          job.id.toString()
+        );
+        deliverableHash = fvResult.encryptedContent;
+        fileverseFileId = fvResult.fileId;
+      } catch {
+        const key = deriveKeyFromSignature(userSignature, job.id.toString());
+        const markdown = `# Scout Report — Job #${jobId}\n\n${result.text}\n\n---\n*Generated by Obscura at ${new Date().toISOString()}*`;
+        const payload = encrypt(markdown, key);
+        deliverableHash = encodePayload(payload);
+        fileverseFileId = `local:${job.id}`;
+        storeLocalReport(job.id.toString(), deliverableHash);
+      }
+    }
 
     const hasDeliverable = deliverableHash !== "";
 
