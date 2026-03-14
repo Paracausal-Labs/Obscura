@@ -147,6 +147,9 @@ User preferences (from ENS text records):
           if (deliverableHash !== "") {
             return { fileId: fileverseFileId, status: "already saved — do not call again" };
           }
+          if (content.length < 150 || /TODO|placeholder|replace with/i.test(content)) {
+            return { error: "Report content too short or contains placeholders. Gather data FIRST, then write report LAST." };
+          }
           this.emitToolCall("writeEncryptedReport", jobId);
           toolsCalled.push("writeEncryptedReport");
           try {

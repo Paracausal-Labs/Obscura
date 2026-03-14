@@ -190,6 +190,9 @@ User preferences (from ENS text records):
           if (deliverableHash !== "") {
             return { fileId: fileverseFileId, status: "already saved — do not call again" };
           }
+          if (content.length < 150 || /TODO|placeholder|replace with/i.test(content)) {
+            return { error: "Report content too short or contains placeholders. Gather research data with other tools FIRST, then call writeEncryptedReport LAST with comprehensive findings." };
+          }
           this.emitToolCall("writeEncryptedReport", jobId);
           toolsCalled.push("writeEncryptedReport");
           try {

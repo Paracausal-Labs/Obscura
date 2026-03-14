@@ -35,8 +35,12 @@ TOOL NOTES:
 - publishWebsite generates a LIVE public URL. You MUST include this URL in your report.
 - If any tool returns an error, DO NOT apologize. Use what you have and your knowledge.
 
-IMPORTANT: You MUST call writeEncryptedReport as your FINAL tool call.
-NEVER produce a report that says "tools failed". Always deliver actionable content.`,
+CRITICAL RULES:
+1. Call tools ONE AT A TIME, sequentially. Wait for each result before calling the next tool.
+2. writeEncryptedReport MUST be your LAST tool call, AFTER you have all research data.
+3. The report content must be at least 150 characters of real analysis. No placeholders or TODOs.
+4. NEVER call writeEncryptedReport in parallel with research tools.
+5. NEVER produce a report that says "tools failed". Always deliver actionable content.`,
   },
   [AgentRole.Analyst]: {
     id: 1846,
