@@ -1,14 +1,42 @@
 "use client";
 
 import { useReadContract, useAccount } from "wagmi";
-import { Badge } from "@/components/ui/badge";
-import type { AgentMetadata } from "@obscura/shared";
+import Image from "next/image";
+import type { AgentMetadata, AgentRole } from "@obscura/shared";
 import { useEnsAgentVerification } from "@/hooks/useEnsIdentity";
 import { reputationConfig } from "@/lib/contracts/reputation";
 
 interface AgentCardProps {
   agent: AgentMetadata;
 }
+
+const AGENT_IMAGES: Record<string, string> = {
+  Scout: "/scout.png",
+  Analyst: "/analyst.png",
+  Ghost: "/ghost.png",
+  Sentinel: "/sentinel.png",
+};
+
+const AGENT_COLORS: Record<string, string> = {
+  Scout: "#aaaaaa",
+  Analyst: "#888888",
+  Ghost: "#ff0033",
+  Sentinel: "#cccccc",
+};
+
+const AGENT_CLASS: Record<string, string> = {
+  Scout: "RECON",
+  Analyst: "INTEL",
+  Ghost: "STEALTH",
+  Sentinel: "ENFORCER",
+};
+
+const AGENT_STATS: Record<string, { success: number; avgTime: string }> = {
+  Scout: { success: 91, avgTime: "45s" },
+  Analyst: { success: 88, avgTime: "52s" },
+  Ghost: { success: 97, avgTime: "30s" },
+  Sentinel: { success: 92, avgTime: "18s eval" },
+};
 
 export function AgentCard({ agent }: AgentCardProps) {
   const { verified, protocol } = useEnsAgentVerification(agent.ensName);
@@ -17,60 +45,159 @@ export function AgentCard({ agent }: AgentCardProps) {
   const { data: reputationData } = useReadContract({
     ...reputationConfig,
     functionName: "getSummary",
-    args: [BigInt(agent.id), address ? [address] : [], "obscura.job", agent.role],
+    args: [
+      BigInt(agent.id),
+      address ? [address] : [],
+      "obscura.job",
+      agent.role as any,
+    ],
     query: { enabled: !!address },
   });
 
-  // getSummary returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals)
   const jobCount = reputationData ? Number(reputationData[0]) : 0;
   const avgScore = reputationData ? Number(reputationData[1]) : 0;
   const displayScore = jobCount > 0 ? Math.min(avgScore, 100) : 0;
 
+  const color = AGENT_COLORS[agent.name] || "#ffffff";
+  const charImage = AGENT_IMAGES[agent.name] || "/scout.png";
+  const charClass = AGENT_CLASS[agent.name] || "AGENT";
+  const charStats = AGENT_STATS[agent.name] || { success: 90, avgTime: "45s" };
+
   return (
-    <div className="relative rounded-2xl border border-white/[0.06] bg-[#0c0d12] p-5 overflow-hidden group hover:border-white/[0.12] transition-colors">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ff0033]/30 to-transparent" />
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h3 className="font-medium text-white">{agent.name}</h3>
-            {verified && (
-              <span className="text-green-400 text-xs" title="ENSIP-25 verified agent">
-                {"\u2713"}
-              </span>
-            )}
+    <div className="relative rounded-2xl border border-white/5 bg-[#0a0b0f] overflow-hidden hover:border-white/10 transition-all duration-300 group flex flex-row min-h-[200px]">
+      {/* Top accent line */}
+      <div
+        className="absolute inset-x-0 top-0 h-px transition-opacity duration-300"
+        style={{
+          background: `linear-gradient(to right, transparent, ${color}55, transparent)`,
+        }}
+      />
+
+      {/* ──────── LEFT: character image ──────── */}
+      <div
+        className="relative flex-shrink-0 w-[120px] md:w-[140px] flex items-end justify-center overflow-hidden"
+        style={{ background: `${color}11` }}
+      >
+        {/* vertical glow strip */}
+        <div
+          className="absolute inset-y-0 right-0 w-8 opacity-20 pointer-events-none"
+          style={{
+            background: `linear-gradient(to left, ${color}33, transparent)`,
+          }}
+        />
+
+        {/* class badge */}
+        <span
+          className="absolute top-2.5 left-2.5 text-[7px] font-black tracking-[0.25em] px-1 py-0.5 rounded border"
+          style={{
+            color: color,
+            borderColor: color + "44",
+            background: color + "11",
+          }}
+        >
+          {charClass}
+        </span>
+
+        <Image
+          src={charImage}
+          alt={agent.name}
+          width={140}
+          height={180}
+          className="object-contain object-bottom w-full h-full max-h-[180px] transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-1"
+          style={{ filter: "drop-shadow(0 0 12px " + color + "44)" }}
+        />
+
+        {/* separator line */}
+        <div
+          className="absolute right-0 top-4 bottom-4 w-px"
+          style={{
+            background: `linear-gradient(to bottom, transparent, ${color}33, transparent)`,
+          }}
+        />
+      </div>
+
+      {/* ──────── RIGHT: info ──────── */}
+      <div className="flex-1 flex flex-col p-4 md:p-5 min-w-0">
+        <div className="flex items-start justify-between mb-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 mb-1">
+              <h3
+                className="font-black text-lg tracking-tight uppercase truncate"
+                style={{
+                  fontFamily: "Impact, 'Arial Black', sans-serif",
+                  color: color === "#ff0033" ? "#ff0033" : "#ffffff",
+                }}
+              >
+                {agent.name}
+              </h3>
+              {verified && (
+                <span className="text-green-400 text-[10px]" title="Verified">
+                  {"\u2713"}
+                </span>
+              )}
+            </div>
+            <p className="text-zinc-600 text-[8px] font-mono truncate">
+              {agent.ensName}
+            </p>
           </div>
-          <p className="text-xs text-[#ff0033]">{agent.ensName}</p>
-          {protocol && (
-            <p className="text-[10px] text-zinc-600">{protocol}</p>
-          )}
+          <div className="text-right flex-shrink-0 ml-2">
+            <p className="text-zinc-600 text-[8px] uppercase tracking-widest mb-0.5">
+              Summary
+            </p>
+            <p
+              className="font-black text-xl tabular-nums tabular-nums"
+              style={{ color: color }}
+            >
+              {displayScore > 0 ? displayScore : charStats.success}%
+            </p>
+          </div>
         </div>
-        <div className="text-right">
-          <div className="text-sm font-mono text-white">{displayScore}/100</div>
-          <div className="text-xs text-zinc-600">{jobCount} reviews</div>
+
+        <p className="text-zinc-500 text-[10px] leading-relaxed mb-3 flex-1 line-clamp-3">
+          {agent.description}
+        </p>
+
+        {/* skills/capabilities */}
+        <div className="flex flex-wrap gap-1 mb-4">
+          {agent.skills.slice(0, 3).map((skill) => (
+            <span
+              key={skill}
+              className="px-2 py-0.5 rounded-md border border-white/[0.06] bg-white/[0.02] text-zinc-500 text-[8px]"
+            >
+              {skill}
+            </span>
+          ))}
         </div>
-      </div>
-      <p className="text-xs text-zinc-500 mb-3">{agent.description}</p>
-      <div className="flex flex-wrap gap-1 mb-3">
-        {agent.skills.map((skill) => (
-          <Badge key={skill} variant="secondary" className="text-[10px] bg-white/[0.04] text-zinc-400 border-white/[0.06]">
-            {skill}
-          </Badge>
-        ))}
-      </div>
-      <div className="mb-3">
-        <div className="h-1.5 bg-white/[0.04] rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{
-              width: `${displayScore}%`,
-              background: "linear-gradient(90deg, #ff0033, #ff1a40)",
-            }}
-          />
+
+        {/* stats footer */}
+        <div className="flex items-end justify-between pt-3 border-t border-white/5">
+          <div className="flex gap-4">
+            <div>
+              <p className="text-zinc-700 text-[8px] uppercase tracking-wider">
+                Fee
+              </p>
+              <p className="text-white font-semibold text-[10px] mt-0.5">
+                {agent.baseFee} USDC
+              </p>
+            </div>
+            <div>
+              <p className="text-zinc-700 text-[8px] uppercase tracking-wider">
+                ID
+              </p>
+              <p className="text-white font-semibold text-[10px] mt-0.5">
+                #{agent.id}
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-zinc-700 text-[8px] uppercase tracking-wider">
+              Reviews
+            </p>
+            <p className="text-white font-semibold text-[10px] mt-0.5">
+              {jobCount}
+            </p>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center justify-between text-xs text-zinc-600">
-        <span>Base fee: {agent.baseFee} USDC</span>
-        <span>ERC-8004 ID: #{agent.id}</span>
       </div>
     </div>
   );

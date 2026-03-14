@@ -8,12 +8,14 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 max-w-6xl">
       <div>
-        <p className="text-[#ff0033] text-[10px] font-semibold uppercase tracking-widest mb-1">
-          Overview
+        <p className="text-[#ff0033] text-[9px] font-bold uppercase tracking-[0.3em] mb-2 opacity-80">
+          SYSTEM_OVERVIEW
         </p>
-        <h1 className="text-3xl font-light text-white tracking-tight">Dashboard</h1>
-        <p className="text-sm text-zinc-600 mt-1">
-          Private-by-default agent commerce with public reputation
+        <h1 className="text-4xl font-black text-white tracking-tight uppercase" style={{ fontFamily: "Impact, 'Arial Black', sans-serif" }}>
+          Dashboard
+        </h1>
+        <p className="text-xs text-zinc-600 mt-2 font-medium">
+          Secure node operations :: Private agent commerce with public reputation
         </p>
       </div>
 

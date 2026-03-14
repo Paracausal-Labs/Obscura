@@ -12,20 +12,38 @@ const metrics = [
   { value: 0.05, prefix: "$", suffix: "\u2013$0.13", label: "Avg Job Cost", sub: "Cross-agent average", chart: [12, 8, 9, 7, 6, 5], span: "col-span-2" },
 ];
 
-function MiniBar({ data }: { data: number[] }) {
+function CylinderChart({ data }: { data: number[] }) {
   const max = Math.max(...data) || 1;
   return (
-    <div className="flex items-end gap-0.5 h-8">
-      {data.map((v, i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-sm"
-          style={{
-            height: `${(v / max) * 100}%`,
-            background: i === data.length - 1 ? "#ff0033" : "#ff003340",
-          }}
-        />
-      ))}
+    <div className="flex items-end gap-1.5 h-12 mt-4 px-1">
+      {data.map((v, i) => {
+        const height = (v / max) * 100;
+        const isLast = i === data.length - 1;
+        return (
+          <div key={i} className="group/bar relative flex-1 flex flex-col items-center justify-end h-full">
+            {/* Cylinder Body */}
+            <div 
+              className="relative w-full rounded-full transition-all duration-700 ease-out overflow-hidden"
+              style={{ 
+                height: `${height}%`,
+                background: isLast 
+                  ? "linear-gradient(to top, #ff0033 0%, #ff1a40 50%, #ff6680 100%)" 
+                  : "linear-gradient(to top, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 100%)",
+                boxShadow: isLast ? "0 0 15px rgba(255,0,51,0.3)" : "none"
+              }}
+            >
+              {/* Highlight Spot */}
+              <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white opacity-40 blur-[1px]" />
+              
+              {/* Internal Glow */}
+              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/bar:opacity-100 transition-opacity duration-300" />
+            </div>
+            
+            {/* Base Glow */}
+            <div className={`absolute -bottom-1 w-2 h-1 rounded-full blur-[2px] ${isLast ? "bg-[#ff0033]" : "bg-white/10"}`} />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -45,7 +63,7 @@ function Counter({
   useEffect(() => {
     if (!inView) return;
     let start = 0;
-    const dur = 1200;
+    const dur = 1500;
     const step = to / (dur / 16);
     const t = setInterval(() => {
       start = Math.min(start + step, to);
@@ -55,7 +73,7 @@ function Counter({
     return () => clearInterval(t);
   }, [inView, to]);
   return (
-    <span ref={ref}>
+    <span ref={ref} className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.1)]">
       {prefix}
       {count}
       {to === 0.05 ? "" : suffix}
@@ -65,69 +83,89 @@ function Counter({
 
 export function MetricsMosaic() {
   return (
-    <section className="relative w-full py-24 md:py-32 bg-[#07080a] overflow-hidden">
-      <div
-        className="absolute bottom-0 left-1/4 w-[500px] h-[300px] rounded-full blur-[120px] opacity-[0.06] pointer-events-none"
-        style={{ background: "#ff0033" }}
-      />
-      <div className="absolute top-[10%] right-[5%] w-[600px] h-[400px] rounded-full blur-[160px] opacity-[0.05] pointer-events-none bg-zinc-300" />
+    <section className="relative w-full py-24 md:py-32 bg-[#050608] overflow-hidden">
+      {/* Background Decorative Elements */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
+         {/* Silver/White Central Ambient Glow */}
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.03)_0%,transparent_70%)] opacity-80" />
+         
+         {/* Subtle Top Accent */}
+         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+      </div>
 
-      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-10 relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           viewport={{ once: true }}
-          className="text-center mb-14"
+          className="text-center mb-16"
         >
-          <p className="text-[#ff0033] uppercase tracking-widest text-[11px] font-semibold mb-3">
-            By the numbers
-          </p>
-          <h2 className="text-4xl md:text-5xl font-light text-white tracking-tight">
-            Meet marvellous metrics
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-6">
+            <span className="w-1 h-px bg-[#ff0033]" />
+            <p className="text-[#ff0033] uppercase tracking-[0.4em] text-[8px] font-bold">
+              GET STARTED
+            </p>
+            <span className="w-1 h-px bg-[#ff0033]" />
+          </div>
+          <h2 className="text-5xl md:text-7xl font-extralight text-white tracking-tight mb-6 leading-[1.1]">
+            Meet marvelous <span className="text-zinc-500">metrics.</span>
           </h2>
-          <p className="text-zinc-500 text-base mt-4 max-w-md mx-auto">
-            Illustrative metrics from the Obscura protocol design
+          <p className="text-zinc-500 text-base max-w-lg mx-auto font-light tracking-wide">
+            Obscura is the product layer for autonomous DeFi agents. Illustrative metrics from the protocol design.
           </p>
         </motion.div>
 
-        <div className="relative rounded-[2rem] border border-[#ff0033]/[0.12] bg-[#0c0d12] p-5 md:p-6 overflow-hidden shadow-[0_0_0_1px_rgba(255,0,51,0.08),inset_0_0_60px_rgba(255,0,51,0.03)]">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[180px] rounded-full blur-[80px] opacity-[0.05] pointer-events-none bg-white" />
-
-          <div className="grid grid-cols-3 gap-3">
-            {metrics.map((m, i) => (
-              <motion.div
-                key={m.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.07 }}
-                viewport={{ once: true }}
-                className={`relative rounded-2xl border border-white/[0.06] bg-[#0a0b0f] p-5 overflow-hidden flex flex-col justify-between min-h-[140px] group hover:border-white/[0.12] transition-colors ${m.span}`}
-              >
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#ff0033]/30 to-transparent" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {metrics.map((m, i) => (
+            <motion.div
+              key={m.label}
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: i * 0.08, ease: "easeOut" }}
+              viewport={{ once: true }}
+              className={`relative rounded-3xl bg-white/[0.01] backdrop-blur-3xl p-8 overflow-hidden group hover:bg-white/[0.02] transition-all duration-700 border border-white/[0.04] hover:border-white/[0.08] ${m.span}`}
+            >
+              {/* Silver edge highlight */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="flex flex-col h-full justify-between">
                 <div>
-                  <p className="text-zinc-600 text-[10px] font-semibold uppercase tracking-widest mb-2">
-                    {m.label}
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-zinc-600 text-[9px] font-bold uppercase tracking-[0.25em]">
+                      {m.label}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <p className="text-white font-extralight text-5xl md:text-7xl tracking-tighter tabular-nums leading-none">
+                      <Counter
+                        to={m.value}
+                        prefix={m.prefix ?? ""}
+                        suffix={m.suffix ?? ""}
+                      />
+                      {m.value === 0.05 && (
+                        <span className="text-zinc-600 text-xl font-light ml-2">
+                          {"\u2013"}$0.13
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <p className="text-zinc-700 text-[10px] font-mono mt-4 uppercase tracking-widest leading-none border-l border-white/10 pl-3">
+                    {m.sub}
                   </p>
-                  <p className="text-white font-black text-4xl md:text-5xl leading-none tabular-nums">
-                    <Counter
-                      to={m.value}
-                      prefix={m.prefix ?? ""}
-                      suffix={m.suffix ?? ""}
-                    />
-                    {m.value === 0.05 && (
-                      <span className="text-zinc-500 text-xl font-medium ml-0.5">
-                        {"\u2013"}$0.13
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-zinc-700 text-[10px] mt-2">{m.sub}</p>
                 </div>
-                <MiniBar data={m.chart} />
-              </motion.div>
-            ))}
-          </div>
+
+                <div className="mt-10">
+                   <CylinderChart data={m.chart} />
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </div>
+        
+        {/* Decorative Grid Pattern Bottom */}
+        <div className="absolute bottom-0 left-0 w-full h-32 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
       </div>
     </section>
   );
