@@ -5,7 +5,7 @@ const groq = createGroq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-export const MODEL = groq("meta-llama/llama-4-scout-17b-16e-instruct");
+export const MODEL = groq("llama-3.3-70b-versatile");
 
 export async function runAgent(params: {
   system: string;
