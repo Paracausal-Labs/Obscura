@@ -1,31 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
-interface EnsRecord {
-  key: string;
-  label: string;
-  value: string;
-}
+import { useAccount } from "wagmi";
+import { useEnsIdentity, useEnsPreferences } from "@/hooks/useEnsIdentity";
 
 export function EnsControl() {
-  const [records, setRecords] = useState<EnsRecord[]>([
-    { key: "defi.risk", label: "Risk Tolerance", value: "conservative" },
-    { key: "defi.assets", label: "Allowed Assets", value: "ETH,USDC,WBTC" },
-    { key: "defi.maxTrade", label: "Max Trade (USD)", value: "500" },
-    { key: "defi.protocols", label: "Protocols", value: "aave,compound" },
-  ]);
-  const [killswitch, setKillswitch] = useState(false);
+  const { address } = useAccount();
+  const { ensName, isLoading: nameLoading } = useEnsIdentity(address);
+  const prefs = useEnsPreferences(ensName);
 
-  function updateRecord(index: number, value: string) {
-    setRecords((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], value };
-      return updated;
-    });
-  }
+  const records = [
+    { key: "defi.risk", label: "Risk Tolerance", value: prefs.risk },
+    { key: "defi.assets", label: "Allowed Assets", value: prefs.assets },
+    { key: "defi.maxTrade", label: "Max Trade (USD)", value: prefs.maxTrade },
+    { key: "agent.killswitch", label: "Kill Switch", value: prefs.killswitch ? "ACTIVE" : "inactive" },
+  ];
+
+  const isKilled = prefs.killswitch;
 
   return (
     <div className="relative rounded-[2rem] border border-white/[0.05] bg-[#0c0d12]/40 backdrop-blur-xl p-8 overflow-hidden group hover:border-[#ff0033]/20 transition-all duration-300">
@@ -40,63 +30,74 @@ export function EnsControl() {
           <h3 className="text-2xl font-light text-white tracking-tight">Policy Management</h3>
         </div>
         <div className="px-3 py-1 rounded-full border border-white/5 bg-white/[0.02]">
-           <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">MODE: SYSTEM_OVERRIDE</span>
+          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
+            {nameLoading ? "RESOLVING..." : ensName ? `ENS: ${ensName}` : "NO_ENS_NAME"}
+          </span>
         </div>
       </div>
 
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {records.map((record, i) => (
-            <div key={record.key} className="space-y-2">
-              <label className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest pl-1">{record.label}</label>
-              <div className="relative group">
-                <Input
-                  value={record.value}
-                  onChange={(e) => updateRecord(i, e.target.value)}
-                  className="h-11 bg-[#07080a] border-white/[0.06] focus:border-[#ff0033]/40 text-sm rounded-xl pl-4 font-mono"
-                />
-                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                  <div className="w-1 h-1 rounded-full bg-white/10 group-hover:bg-[#ff0033]/40 transition-colors" />
+        {!address ? (
+          <div className="py-12 text-center">
+            <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-[0.2em]">
+              CONNECT_WALLET_TO_VIEW_POLICY
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {records.map((record) => (
+                <div key={record.key} className="space-y-2">
+                  <label className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest pl-1">
+                    {record.label}
+                  </label>
+                  <div className="h-11 bg-[#07080a] border border-white/[0.06] rounded-xl px-4 flex items-center">
+                    <span className="text-sm font-mono text-zinc-300">
+                      {record.value || "—"}
+                    </span>
+                  </div>
+                  <p className="text-[8px] font-mono text-zinc-700 pl-1">
+                    TEXT_RECORD: {record.key}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 p-6 rounded-2xl bg-[#ff0033]/[0.02] border border-[#ff0033]/10 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all duration-500 ${
+                  !isKilled
+                    ? "bg-green-500/10 border-green-500/20 text-green-500"
+                    : "bg-[#ff0033]/10 border-[#ff0033]/20 text-[#ff0033]"
+                }`}>
+                  <span className="text-xl">{!isKilled ? "✓" : "!"}</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white uppercase tracking-tight">Emergency Kill Switch</p>
+                  <p className="text-[10px] font-mono text-zinc-600 uppercase mt-0.5">
+                    {!isKilled
+                      ? "SIGNAL_CLEAR :: AGENTS ARE ACTIVE"
+                      : "SIGNAL_BLOCKED :: ALL AGENTS HALTED"}
+                  </p>
                 </div>
               </div>
+              <a
+                href={`https://sepolia.app.ens.domains/${ensName || ""}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-11 px-8 font-black uppercase tracking-[0.15em] rounded-xl bg-gradient-to-b from-zinc-100/10 to-transparent border border-white/10 text-white hover:border-[#ff0033]/40 transition-all flex items-center text-xs"
+              >
+                Edit on ENS App
+              </a>
             </div>
-          ))}
-        </div>
 
-        <div className="mt-10 p-6 rounded-2xl bg-[#ff0033]/[0.02] border border-[#ff0033]/10 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all duration-500 ${
-              killswitch ? "bg-green-500/10 border-green-500/20 text-green-500" : "bg-[#ff0033]/10 border-[#ff0033]/20 text-[#ff0033]"
-            }`}>
-              <span className="text-xl">{killswitch ? "✓" : "!"}</span>
+            <div className="flex items-center justify-center pt-4">
+              <span className="text-[9px] text-zinc-800 font-mono uppercase tracking-[0.2em]">
+                Live data from ENS text records on Ethereum Sepolia
+              </span>
             </div>
-            <div>
-              <p className="text-sm font-bold text-white uppercase tracking-tight">Emergency Kill Switch</p>
-              <p className="text-[10px] font-mono text-zinc-600 uppercase mt-0.5">
-                {killswitch ? "SIGNAL_RESUMING :: AGENTS ARE ACTIVE" : "SIGNAL_BLOCKING :: AGENTS ARE LOCKED"}
-              </p>
-            </div>
-          </div>
-          <Button
-            onClick={() => setKillswitch(!killswitch)}
-            className={`relative h-11 px-8 font-black uppercase tracking-[0.15em] rounded-xl transition-all backdrop-blur-md overflow-hidden group/kb ${
-              killswitch
-                ? "bg-gradient-to-b from-green-500/10 to-transparent border border-green-500/40 text-green-500 hover:shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:border-green-500"
-                : "bg-gradient-to-b from-zinc-100/10 to-transparent border border-[#ff0033]/40 text-white hover:shadow-[0_0_20px_rgba(255,0,51,0.2)] hover:border-[#ff0033]"
-            }`}
-          >
-            <span className="relative z-10">
-              {killswitch ? "Re-Authorize Agents" : "Engage Kill Switch"}
-            </span>
-            <div className={`absolute bottom-0 left-0 w-full h-px opacity-30 group-hover/kb:opacity-100 transition-opacity ${
-              killswitch ? "bg-green-500" : "bg-[#ff0033]"
-            }`} />
-          </Button>
-        </div>
-
-        <div className="flex items-center justify-center pt-4">
-           <span className="text-[9px] text-zinc-800 font-mono uppercase tracking-[0.2em]">All changes are synchronized with ENS Registry :: eth.link</span>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

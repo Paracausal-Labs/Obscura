@@ -90,6 +90,12 @@ class Orchestrator {
 
     // Fetch user preferences from ENS
     const userPrefs = await getUserPreferences(userEnsName);
+    this.emitActivity({
+      agent: assignedRole,
+      type: "tool_call",
+      message: `ENS policy loaded from ${userEnsName || "default"}: risk=${userPrefs.risk}, assets=${userPrefs.assets}, maxTrade=${userPrefs.maxTrade}`,
+      jobId,
+    });
 
     const context: AgentContext = {
       job,
