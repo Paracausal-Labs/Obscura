@@ -249,10 +249,47 @@ export function CreateJob() {
                     placeholder='Describe your goal, e.g. "Scan Base for yields > 10%"'
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="h-14 bg-[#07080a] border-white/[0.06] focus:border-[#ff0033]/40 focus:ring-1 focus:ring-[#ff0033]/20 transition-all rounded-xl pl-4 placeholder:text-zinc-700 text-sm"
+                    className="h-14 bg-[#07080a] border-white/[0.06] focus:border-[#ff0033]/40 focus:ring-1 focus:ring-[#ff0033]/20 transition-all rounded-xl pl-4 pr-24 placeholder:text-zinc-700 text-sm"
                   />
-                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                    <span className="text-zinc-800 font-mono text-[10px]">CMD_03</span>
+                  <div className="absolute inset-y-0 right-2 flex items-center">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const el = document.getElementById("sample-prompts");
+                          if (el) el.classList.toggle("hidden");
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] text-[9px] font-mono text-zinc-500 uppercase tracking-wider hover:border-[#ff0033]/30 hover:text-zinc-300 transition-all"
+                      >
+                        Examples
+                      </button>
+                      <div
+                        id="sample-prompts"
+                        className="hidden absolute right-0 top-full mt-2 w-80 rounded-xl border border-white/[0.06] bg-[#0a0b10] shadow-2xl shadow-black/50 z-50 overflow-hidden"
+                      >
+                        {[
+                          { label: "Yield Research", prompt: "Find me the best yield opportunities for USDC on Base" },
+                          { label: "Website Creation", prompt: "Research ETH Mumbai 2025 and create a landing page about it" },
+                          { label: "Token Analysis", prompt: "Research the top trending tokens on Base this week" },
+                          { label: "Portfolio Audit", prompt: "Analyze wallet 0x4CcB868a7bd4fd91C366903F9f0Cc94FdC199Ebf on Base" },
+                          { label: "Protocol Deep Dive", prompt: "Give me a deep analysis of Aerodrome Finance on Base" },
+                          { label: "Sentiment Check", prompt: "What is the market sentiment around Ethereum right now?" },
+                        ].map((s) => (
+                          <button
+                            key={s.label}
+                            type="button"
+                            onClick={() => {
+                              setDescription(s.prompt);
+                              document.getElementById("sample-prompts")?.classList.add("hidden");
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-white/[0.03] transition-colors border-b border-white/[0.03] last:border-0"
+                          >
+                            <span className="text-[9px] font-bold text-[#ff0033] uppercase tracking-wider">{s.label}</span>
+                            <p className="text-xs text-zinc-400 mt-0.5">{s.prompt}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
