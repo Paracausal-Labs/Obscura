@@ -3,6 +3,7 @@ import { PortfolioChart } from "@/components/charts/portfolio-chart";
 import { ReputationChart } from "@/components/charts/reputation-chart";
 import { PnlChart } from "@/components/charts/pnl-chart";
 import { ActivityFeed } from "@/components/layout/activity-feed";
+import { JobHistory } from "@/components/jobs/job-history";
 
 export default function DashboardPage() {
   return (
@@ -28,6 +29,8 @@ export default function DashboardPage() {
           <PnlChart />
         </div>
       </div>
+
+      <JobHistory />
 
       <ActivityFeed />
     </div>
