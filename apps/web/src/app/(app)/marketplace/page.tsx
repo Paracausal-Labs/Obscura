@@ -16,6 +16,7 @@ export default function MarketplacePage() {
       </div>
 
       <CreateJob />
+      <ActivityFeed />
       <JobBoard />
 
       <div>
@@ -29,8 +30,6 @@ export default function MarketplacePage() {
           ))}
         </div>
       </div>
-
-      <ActivityFeed />
     </div>
   );
 }

@@ -44,7 +44,7 @@ const STEP_LABELS: Record<FlowStep, string> = {
   approving: "2/4 — Approving USDC spend...",
   funding: "3/4 — Funding job...",
   signing: "4/4 — Signing encryption key...",
-  submitting: "Submitting to agents...",
+  submitting: "Agent working — watch the Live Activity feed below...",
   done: "Job submitted!",
   error: "Something went wrong",
 };

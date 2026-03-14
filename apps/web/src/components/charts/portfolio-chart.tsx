@@ -4,7 +4,7 @@ import { useJobs } from "@/hooks/useJobs";
 import { Badge } from "@/components/ui/badge";
 
 const STATUS_LABELS: Record<number, { label: string; class: string }> = {
-  0: { label: "Open", class: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" },
+  0: { label: "Created", class: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20" },
   1: { label: "Funded", class: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
   2: { label: "Submitted", class: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
   3: { label: "Completed", class: "bg-green-500/10 text-green-400 border-green-500/20" },

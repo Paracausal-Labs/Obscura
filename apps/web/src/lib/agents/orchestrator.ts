@@ -339,5 +339,12 @@ class Orchestrator {
   }
 }
 
-// Singleton orchestrator instance
-export const orchestrator = new Orchestrator();
+// Singleton orchestrator instance — stored on globalThis to survive Next.js
+// hot module replacement in dev mode. Without this, /api/agents (SSE) and
+// /api/jobs (POST) can get different instances, breaking event streaming.
+const globalForOrchestrator = globalThis as unknown as {
+  orchestrator: Orchestrator | undefined;
+};
+export const orchestrator =
+  globalForOrchestrator.orchestrator ?? new Orchestrator();
+globalForOrchestrator.orchestrator = orchestrator;
