@@ -101,10 +101,36 @@ All paid API calls use the [x402 payment protocol](https://x402.org) — USDC mi
 - `complete(jobId, reason)` / `reject(jobId, reason)` — evaluator settles
 - `claimRefund(jobId)` — client reclaims after expiry
 
-**On-chain registries** (shared infrastructure):
+**Deployed Addresses (Base Sepolia):**
 
-- **ERC-8004 Identity**: `0x8004A818BFB912233c491871b3d84c89A494BD9e`
-- **ERC-8004 Reputation**: `0x8004B663056A597Dffe9eCcC1965A193B7388713`
+| Contract | Address |
+|----------|---------|
+| AgentJobs (ERC-8183) | `0x8693b2268b3aCa787b7A7C3811C8CC421f16E990` |
+| MockUSDC | `0xfd19254bfEB70503dEC0F829e9bbb0fBB4C847f0` |
+| ERC-8004 Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
+| ERC-8004 Reputation Registry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
+
+**Agent Wallets & ERC-8004 IDs:**
+
+| Agent | ENS | Address | ERC-8004 ID |
+|-------|-----|---------|-------------|
+| Scout | scout.eth | `0xfA2D1a4EAA0b8cc5EEa76AAc83a1DEA35dCDecB1` | #1843 |
+| Analyst | analyst.eth | `0xB826FEA60B6776D959b925D54f5B68144e5B8c1c` | #1846 |
+| Ghost | ghost.eth | `0x3c18Eb48F34c27f9BFbEadc97Ba7f20EC85492f9` | #1844 |
+| Sentinel | sentinel.eth | `0x1F66550966955c0eA15B71CE83337D7bC658267B` | #1845 |
+
+**ENS Text Records (Ethereum Sepolia):**
+
+Demo user: `obscuratester.eth`
+
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `defi.risk` | `conservative` | Agent risk tolerance enforcement |
+| `defi.assets` | `ETH,USDC,WBTC` | Allowed asset whitelist |
+| `defi.maxTrade` | `500` | Max trade size (USD) |
+| `defi.protocols` | `aave,compound` | Allowed protocols |
+| `agent.killswitch` | `false` | Emergency halt all agents |
+| `agent.preferred` | `scout.eth` | Preferred agent for auto-routing |
 
 ---
 
