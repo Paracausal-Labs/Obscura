@@ -43,6 +43,9 @@ class Orchestrator {
       timestamp: Date.now(),
     };
     this.state.activityLog.push(event);
+    if (this.state.activityLog.length > 500) {
+      this.state.activityLog = this.state.activityLog.slice(-500);
+    }
     for (const callback of Array.from(this.subscribers)) {
       try {
         callback(event);
@@ -269,46 +272,62 @@ class Orchestrator {
     providerRole: AgentRole,
     jobId: number
   ): Promise<{ ok: true } | { ok: false; error: string }> {
-    try {
-      const walletClient = getWalletClientForRole(AgentRole.Sentinel);
-      const publicClient = getBaseSepoliaClient();
+    const MAX_RETRIES = 2;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const walletClient = getWalletClientForRole(AgentRole.Sentinel);
+        const publicClient = getBaseSepoliaClient();
 
-      const agentMeta = AGENTS[providerRole];
-      const score = sentinelResult.success ? 100n : 0n;
+        const agentMeta = AGENTS[providerRole];
+        // Extract actual granular score from Sentinel's reasoning (e.g. "Score 82/100: ...")
+        const scoreMatch = sentinelResult.metadata.reasoning.match(/Score (\d+)\/100/);
+        const score = BigInt(scoreMatch ? Number(scoreMatch[1]) : (sentinelResult.success ? 75 : 0));
 
-      const hash = await walletClient.writeContract({
-        ...reputationConfig,
-        functionName: "giveFeedback",
-        args: [
-          BigInt(agentMeta.id),
-          score,
-          0,
-          "obscura.job",
-          providerRole,
-          `job/${jobId}`,
-          sentinelResult.metadata.reasoning,
-          keccak256(toHex(sentinelResult.deliverableHash || "none")),
-        ],
-      });
-      await publicClient.waitForTransactionReceipt({ hash });
+        // Get fresh nonce to avoid stale nonce errors from rapid sequential txs
+        const nonce = await publicClient.getTransactionCount({
+          address: walletClient.account.address,
+        });
 
-      this.emitActivity({
-        agent: AgentRole.Sentinel,
-        type: "tool_call",
-        message: `ERC-8004 reputation recorded for ${providerRole} on Job #${jobId} (score: ${score})`,
-        jobId,
-      });
-      return { ok: true };
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Unknown error";
-      this.emitActivity({
-        agent: AgentRole.Sentinel,
-        type: "error",
-        message: `ERC-8004 reputation write failed for Job #${jobId}: ${msg}`,
-        jobId,
-      });
-      return { ok: false, error: msg };
+        const hash = await walletClient.writeContract({
+          ...reputationConfig,
+          functionName: "giveFeedback",
+          args: [
+            BigInt(agentMeta.id),
+            score,
+            0,
+            "obscura.job",
+            providerRole,
+            `job/${jobId}`,
+            sentinelResult.metadata.reasoning,
+            keccak256(toHex(sentinelResult.deliverableHash || "none")),
+          ],
+          nonce,
+        });
+        await publicClient.waitForTransactionReceipt({ hash });
+
+        this.emitActivity({
+          agent: AgentRole.Sentinel,
+          type: "tool_call",
+          message: `ERC-8004 reputation recorded for ${providerRole} on Job #${jobId} (score: ${score})`,
+          jobId,
+        });
+        return { ok: true };
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Unknown error";
+        if (attempt < MAX_RETRIES && msg.includes("nonce")) {
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+        this.emitActivity({
+          agent: AgentRole.Sentinel,
+          type: "error",
+          message: `ERC-8004 reputation write failed for Job #${jobId}: ${msg}`,
+          jobId,
+        });
+        return { ok: false, error: msg };
+      }
     }
+    return { ok: false, error: "Max retries exceeded" };
   }
 
   getActivityLog(): ActivityEvent[] {

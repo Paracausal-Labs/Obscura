@@ -5,15 +5,20 @@ import type { AgentContext } from "./types";
 
 const EXPECTED_TOOLS: Record<string, string[]> = {
   [AgentRole.Scout]: [
+    "defiYields",
+    "defiProtocol",
     "searchToken",
     "getTokenPrice",
     "getYieldSuggestions",
     "webSearch",
     "twitterSearch",
     "scrapeUrl",
+    "publishWebsite",
     "writeEncryptedReport",
   ],
   [AgentRole.Analyst]: [
+    "defiYields",
+    "defiProtocol",
     "analyzeWallet",
     "getPortfolio",
     "getPnlReport",
@@ -30,7 +35,6 @@ const EXPECTED_TOOLS: Record<string, string[]> = {
   ],
 };
 
-const TIMELINESS_THRESHOLD_MS = 60_000;
 const PASS_THRESHOLD = 50;
 
 interface EvaluationContext {
@@ -114,11 +118,12 @@ export class SentinelAgent extends BaseAgent {
         ? Math.round((toolHits / expected.length) * 25)
         : 25;
 
-    // Score component 3: Timeliness (+20)
-    const timely =
-      typeof evalCtx.duration === "number" &&
-      evalCtx.duration < TIMELINESS_THRESHOLD_MS;
-    const timelinessScore = timely ? 20 : 0;
+    // Score component 3: Timeliness (+20) — gradient: <30s=20, <60s=15, <120s=10, else 5
+    const dur = typeof evalCtx.duration === "number" ? evalCtx.duration : Infinity;
+    const timelinessScore =
+      dur < 30_000 ? 20 :
+      dur < 60_000 ? 15 :
+      dur < 120_000 ? 10 : 5;
 
     // Score component 4: Risk compliance (+25)
     const riskScore = evaluateRiskCompliance(
