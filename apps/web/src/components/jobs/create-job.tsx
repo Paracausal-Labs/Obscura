@@ -11,7 +11,6 @@ import {
 import { erc20Abi, parseEventLogs, zeroAddress, formatUnits } from "viem";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { classifyJobAgent, AGENTS } from "@/lib/config/agents";
 import { AgentRole } from "@obscura/shared";
 import { agentJobsConfig, AGENT_JOBS_ABI } from "@/lib/contracts/agent-jobs";

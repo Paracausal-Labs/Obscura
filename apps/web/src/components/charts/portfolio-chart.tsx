@@ -1,7 +1,6 @@
 "use client";
 
 import { useJobs } from "@/hooks/useJobs";
-import { Badge } from "@/components/ui/badge";
 
 const STATUS_LABELS: Record<number, { label: string; class: string; color: string }> = {
   0: { label: "Created", class: "bg-zinc-500/5 text-zinc-500 border-zinc-500/10", color: "#71717a" },

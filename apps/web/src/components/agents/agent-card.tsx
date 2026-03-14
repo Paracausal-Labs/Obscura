@@ -2,7 +2,7 @@
 
 import { useReadContract, useAccount } from "wagmi";
 import Image from "next/image";
-import type { AgentMetadata, AgentRole } from "@obscura/shared";
+import type { AgentMetadata } from "@obscura/shared";
 import { useEnsAgentVerification } from "@/hooks/useEnsIdentity";
 import { reputationConfig } from "@/lib/contracts/reputation";
 
@@ -39,7 +39,7 @@ const AGENT_STATS: Record<string, { success: number; avgTime: string }> = {
 };
 
 export function AgentCard({ agent }: AgentCardProps) {
-  const { verified, protocol } = useEnsAgentVerification(agent.ensName);
+  const { verified } = useEnsAgentVerification(agent.ensName);
   const { address } = useAccount();
 
   const { data: reputationData } = useReadContract({
@@ -49,7 +49,7 @@ export function AgentCard({ agent }: AgentCardProps) {
       BigInt(agent.id),
       address ? [address] : [],
       "obscura.job",
-      agent.role as any,
+      agent.role as string,
     ],
     query: { enabled: !!address },
   });
