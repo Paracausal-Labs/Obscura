@@ -154,6 +154,6 @@ export async function GET(req: Request) {
   }
   const { getAllFileIds } = await import("@/lib/integrations/local-reports");
   const log = orchestrator.getActivityLog();
-  const fileIds = getAllFileIds();
+  const fileIds = await getAllFileIds();
   return NextResponse.json({ activity: log, fileIds });
 }

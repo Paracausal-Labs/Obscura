@@ -107,7 +107,7 @@ export class GhostAgent extends BaseAgent {
         const payload = encrypt(markdown, key);
         deliverableHash = encodePayload(payload);
         fileverseFileId = `local:${job.id}`;
-        storeLocalReport(job.id.toString(), deliverableHash);
+        await storeLocalReport(job.id.toString(), deliverableHash);
       }
 
       this.emit({

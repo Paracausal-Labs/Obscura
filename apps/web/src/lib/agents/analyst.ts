@@ -162,7 +162,7 @@ User preferences (from ENS text records):
             const payload = encrypt(markdown, key);
             deliverableHash = encodePayload(payload);
             fileverseFileId = `local:${job.id}`;
-            storeLocalReport(job.id.toString(), deliverableHash);
+            await storeLocalReport(job.id.toString(), deliverableHash);
             return { fileId: fileverseFileId, status: "saved (local fallback)" };
           }
         },

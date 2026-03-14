@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
     if (fileId.startsWith("local:")) {
       // Decrypt from in-memory local store
-      const encrypted = getLocalReport(jobId);
+      const encrypted = await getLocalReport(jobId);
       if (!encrypted) {
         return NextResponse.json(
           { error: "Report not found (server may have restarted)" },

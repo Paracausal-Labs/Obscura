@@ -104,7 +104,7 @@ class Orchestrator {
 
     // Persist fileId and emit report availability for frontend
     if (agentResult.fileverseFileId) {
-      storeFileId(String(jobId), agentResult.fileverseFileId);
+      await storeFileId(String(jobId), agentResult.fileverseFileId);
       this.emitActivity({
         agent: assignedRole,
         type: "submit",
