@@ -11,7 +11,7 @@ export function deriveKeyFromSignature(signature: string, salt: string = ""): Bu
 }
 
 export function encrypt(text: string, key: Buffer): EncryptedPayload {
-  const iv = randomBytes(16);
+  const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   const encrypted = Buffer.concat([
     cipher.update(text, "utf8"),

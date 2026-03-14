@@ -83,7 +83,7 @@ All agents write encrypted reports to Fileverse using per-job AES-256-GCM keys d
 | [StableUpload](https://stableupload.dev) | x402 | Website publishing ($0.02/page) |
 | [DeFiLlama](https://defillama.com) | REST | DeFi yields, protocol TVL, token prices (free, no auth) |
 | [Fileverse](https://fileverse.io) | dDocs SDK | Encrypted report storage (IPFS + Pimlico gasless) |
-| [Groq](https://groq.com) | REST | LLM inference (Llama 4 Scout 17B) |
+| [Groq](https://groq.com) | REST | LLM inference (Llama 3.3 70B) |
 | [BitGo](https://bitgo.com) | REST | Privacy intermediary wallet (optional) |
 | [Privy](https://privy.io) | SDK | Wallet authentication |
 
@@ -229,7 +229,7 @@ forge test        # Run contract tests
 |-------|------------|
 | Frontend | Next.js 14, React 18, TailwindCSS, shadcn/ui, Framer Motion |
 | Wallet | Privy, wagmi 3, viem 2, RainbowKit |
-| AI | Groq (Llama 4 Scout 17B), Vercel AI SDK |
+| AI | Groq (Llama 3.3 70B), Vercel AI SDK |
 | Payments | x402 protocol (USDC on Base) |
 | Storage | Fileverse dDocs, Pinata IPFS |
 | Contracts | Foundry, Solidity 0.8.20, OpenZeppelin |

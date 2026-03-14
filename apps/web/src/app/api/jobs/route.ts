@@ -146,7 +146,12 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  // Basic origin check — only allow from same origin
+  const origin = req.headers.get("origin") || req.headers.get("referer") || "";
+  if (origin && !origin.includes("localhost") && !origin.includes("127.0.0.1")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
   const log = orchestrator.getActivityLog();
   return NextResponse.json({ activity: log });
 }

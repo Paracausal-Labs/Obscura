@@ -81,6 +81,15 @@ export async function webSearch(query: string) {
 }
 
 export async function scrapeUrl(url: string) {
+  // Block internal/cloud metadata URLs
+  const parsed = new URL(url);
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("Only HTTP(S) URLs allowed");
+  }
+  const host = parsed.hostname;
+  if (host === "localhost" || host.startsWith("127.") || host.startsWith("169.254.") || host.startsWith("10.") || host.startsWith("192.168.") || host === "metadata.google.internal") {
+    throw new Error("Internal URLs not allowed");
+  }
   const c = await enrichClient();
   const { data } = await c.post("/api/firecrawl/scrape", { url });
   return data;
