@@ -64,8 +64,8 @@ Obscura/
 
 | Agent | ENS | Role | Key Tools |
 |-------|-----|------|-----------|
-| **Scout** | scout.eth | Market research, web publishing | webSearch, scrapeUrl, twitterSearch, searchToken, getTokenPrice, getYieldSuggestions, publishWebsite |
-| **Analyst** | analyst.eth | Portfolio analysis, risk assessment | analyzeWallet, getPortfolio, getPnlReport, webSearch, scrapeUrl |
+| **Scout** | scout.eth | Market research, web publishing | defiYields, defiProtocol, webSearch, twitterSearch, searchToken, getTokenPrice, publishWebsite |
+| **Analyst** | analyst.eth | Portfolio analysis, risk assessment | defiYields, defiProtocol, analyzeWallet, getPortfolio, getPnlReport, webSearch |
 | **Ghost** | ghost.eth | Private trade execution via BitGo | getSwapQuote, executeSwap, signAndBroadcast, getTransactionStatus |
 | **Sentinel** | sentinel.eth | Deterministic evaluator (no LLM) | Scoring: deliverable (30) + tools (25) + timeliness (25) + risk compliance (25) |
 
@@ -81,8 +81,9 @@ All agents write encrypted reports to Fileverse using per-job AES-256-GCM keys d
 | [StableEnrich](https://stableenrich.dev) | x402 | Exa web search, Firecrawl scraping |
 | [twit.sh](https://twit.sh) | x402 | X/Twitter search |
 | [StableUpload](https://stableupload.dev) | x402 | Website publishing ($0.02/page) |
+| [DeFiLlama](https://defillama.com) | REST | DeFi yields, protocol TVL, token prices (free, no auth) |
 | [Fileverse](https://fileverse.io) | dDocs SDK | Encrypted report storage (IPFS + Pimlico gasless) |
-| [Groq](https://groq.com) | REST | LLM inference (Llama 3.3 70B) |
+| [Groq](https://groq.com) | REST | LLM inference (Llama 4 Scout 17B) |
 | [BitGo](https://bitgo.com) | REST | Privacy intermediary wallet (optional) |
 | [Privy](https://privy.io) | SDK | Wallet authentication |
 
@@ -213,12 +214,12 @@ forge test        # Run contract tests
 
 1. Connect wallet — ENS name resolves, preferences load from text records
 2. Dashboard shows real on-chain stats (jobs, completions, reputation scores)
-3. Post a job: *"Research ETH Mumbai 2026 and create a landing page about it"*
-4. Watch the activity feed: Scout picks up → webSearch → scrapeUrl → publishWebsite → writeEncryptedReport → Sentinel evaluates → complete
-5. Decrypt the report — see research summary + live website URL
-6. Click URL — real website the agent just published via StableUpload
-7. Rate the agent on-chain (ERC-8004 reputation)
-8. Dashboard updates with real job count and scores
+3. Post a job: *"Find me the best yield for USDC on Base"*
+4. Watch the activity feed: Scout picks up → defiYields → defiProtocol → webSearch → writeEncryptedReport → Sentinel evaluates (score 82/100) → on-chain complete
+5. ERC-8004 reputation auto-recorded by Sentinel
+6. Decrypt the report — see real yield data from DeFiLlama + web research
+7. Rate the agent on-chain (ERC-8004 reputation feedback)
+8. Dashboard updates with real job count, scores, and reputation bars
 
 ---
 
@@ -228,7 +229,7 @@ forge test        # Run contract tests
 |-------|------------|
 | Frontend | Next.js 14, React 18, TailwindCSS, shadcn/ui, Framer Motion |
 | Wallet | Privy, wagmi 3, viem 2, RainbowKit |
-| AI | Groq (Llama 3.3 70B), Vercel AI SDK |
+| AI | Groq (Llama 4 Scout 17B), Vercel AI SDK |
 | Payments | x402 protocol (USDC on Base) |
 | Storage | Fileverse dDocs, Pinata IPFS |
 | Contracts | Foundry, Solidity 0.8.20, OpenZeppelin |
