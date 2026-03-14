@@ -269,11 +269,11 @@ export function CreateJob() {
                       >
                         {[
                           { label: "Yield Research", prompt: "Find me the best yield opportunities for USDC on Base" },
-                          { label: "Website Creation", prompt: "Research ETH Mumbai 2025 and create a landing page about it" },
-                          { label: "Token Analysis", prompt: "Research the top trending tokens on Base this week" },
-                          { label: "Portfolio Audit", prompt: "Analyze wallet 0x4CcB868a7bd4fd91C366903F9f0Cc94FdC199Ebf on Base" },
                           { label: "Protocol Deep Dive", prompt: "Give me a deep analysis of Aerodrome Finance on Base" },
-                          { label: "Sentiment Check", prompt: "What is the market sentiment around Ethereum right now?" },
+                          { label: "Token Analysis", prompt: "Research the top trending tokens on Base this week" },
+                          { label: "Portfolio Audit", prompt: "Analyze my wallet on Base and suggest optimizations" },
+                          { label: "Market Research", prompt: "What are the best DeFi protocols on Base right now?" },
+                          { label: "Risk Assessment", prompt: "Analyze the risk profile of stablecoin yields on Base" },
                         ].map((s) => (
                           <button
                             key={s.label}
