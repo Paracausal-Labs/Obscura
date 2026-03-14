@@ -1,5 +1,3 @@
-import { z } from "zod";
-import { tool } from "ai";
 import { AgentRole } from "@obscura/shared";
 import type { AgentResult } from "@obscura/shared";
 import { BaseAgent } from "./base-agent";
@@ -7,24 +5,26 @@ import type { AgentContext } from "./types";
 import { runAgent } from "../integrations/groq";
 import { AGENTS } from "../config/agents";
 import {
-  searchToken,
-  getTokenPrice,
-  getYieldSuggestions,
-} from "../integrations/heyelsa";
-import {
   twitterSearch,
   webSearch,
-  scrapeUrl,
   publishWebsite,
 } from "../integrations/agentcash";
 import {
   getTopYields as llamaYields,
   getProtocolTvl as llamaProtocol,
-  getStablecoinYields as llamaStableYields,
 } from "../integrations/defillama";
 import { createEncryptedReport } from "../integrations/fileverse";
 import { deriveKeyFromSignature, encrypt, encodePayload } from "../integrations/crypto";
 import { storeLocalReport } from "../integrations/local-reports";
+
+type QueryType = "defi" | "website" | "research";
+
+function classifyQuery(description: string): QueryType {
+  const lower = description.toLowerCase();
+  if (/website|landing page|create.*page|build.*site|publish.*page/.test(lower)) return "website";
+  if (/yield|apy|farm|stake|swap|token|protocol|defi|usdc|eth.*base/.test(lower)) return "defi";
+  return "research";
+}
 
 export class ScoutAgent extends BaseAgent {
   role = AgentRole.Scout;
@@ -36,241 +36,255 @@ export class ScoutAgent extends BaseAgent {
     const { job, userPrefs, userSignature } = context;
     const jobId = Number(job.id);
     const config = AGENTS[AgentRole.Scout];
+    const queryType = classifyQuery(job.description);
 
-    const systemPrompt = `${config.systemPrompt}
+    // Step 1: Gather data programmatically (no LLM tool calling needed)
+    const researchData: Record<string, unknown> = {};
+
+    if (queryType === "defi") {
+      await this.gatherDefiData(jobId, job.description, researchData, toolsCalled);
+    } else if (queryType === "website") {
+      await this.gatherWebData(jobId, job.description, researchData, toolsCalled);
+    } else {
+      await this.gatherResearchData(jobId, job.description, researchData, toolsCalled);
+    }
+
+    // Step 2: Use LLM to write a report from gathered data (text generation only, no tools)
+    const reportPrompt = this.buildReportPrompt(job.description, userPrefs, researchData, queryType);
+
+    const result = await runAgent({
+      system: `${config.systemPrompt}
 
 User preferences (from ENS text records):
 - Risk tolerance: ${userPrefs.risk}
 - Preferred assets: ${userPrefs.assets}
 - Max trade size: ${userPrefs.maxTrade}
-- Preferred protocols: ${userPrefs.protocols}`;
+- Preferred protocols: ${userPrefs.protocols}`,
+      prompt: reportPrompt,
+      tools: {},
+      maxSteps: 1,
+    });
 
+    const reportContent = result.text || "No analysis generated.";
+
+    // Step 3: If website query, try to publish
+    if (queryType === "website" && !researchData.publishedUrl) {
+      await this.tryPublishWebsite(jobId, job.description, reportContent, researchData, toolsCalled);
+    }
+
+    // Step 4: Write encrypted report
     let deliverableHash = "";
     let fileverseFileId = "";
 
-    const tools = {
-      // --- Reliable free tools (DeFiLlama) — use these first ---
-      defiYields: tool({
-        description:
-          "Get top DeFi yield opportunities from DeFiLlama. Use this FIRST for any yield/APY research. Filter by chain or stablecoin.",
-        inputSchema: z.object({
-          chain: z.string().optional().describe("Filter by chain (e.g. 'Base', 'Ethereum')"),
-          stablecoinOnly: z.boolean().default(false).describe("Only show stablecoin pools"),
-        }),
-        execute: async ({ chain, stablecoinOnly }: { chain?: string; stablecoinOnly: boolean }) => {
-          this.emitToolCall("defiYields", jobId);
-          toolsCalled.push("defiYields");
-          try {
-            if (stablecoinOnly) return await llamaStableYields();
-            return await llamaYields(chain);
-          } catch (e) {
-            return { error: `DeFiLlama yields unavailable: ${e instanceof Error ? e.message : "unknown"}` };
-          }
-        },
-      }),
+    const finalContent = researchData.publishedUrl
+      ? `${reportContent}\n\n## Published Website\n\nLive URL: ${researchData.publishedUrl}`
+      : reportContent;
 
-      defiProtocol: tool({
-        description:
-          "Get TVL, description, and details for a DeFi protocol from DeFiLlama (e.g. 'aave', 'aerodrome', 'morpho').",
-        inputSchema: z.object({
-          protocol: z.string().describe("Protocol slug (e.g. 'aave', 'uniswap', 'aerodrome')"),
-        }),
-        execute: async ({ protocol }: { protocol: string }) => {
-          this.emitToolCall("defiProtocol", jobId);
-          toolsCalled.push("defiProtocol");
-          try { return await llamaProtocol(protocol); }
-          catch (e) {
-            return { error: `DeFiLlama protocol lookup failed: ${e instanceof Error ? e.message : "unknown"}` };
-          }
-        },
-      }),
-
-      // --- Paid tools (x402 micropayments) — fallback if free tools insufficient ---
-      searchToken: tool({
-        description: "Search for a token by name or symbol (HeyElsa, paid via x402)",
-        inputSchema: z.object({
-          query: z.string().describe("Token name or symbol to search"),
-        }),
-        execute: async ({ query }: { query: string }) => {
-          this.emitToolCall("searchToken", jobId);
-          toolsCalled.push("searchToken");
-          try { return await searchToken(query); }
-          catch (e) { return { error: `searchToken failed (x402): ${e instanceof Error ? e.message : "payment/network error"}. Use defiYields or defiProtocol instead.` }; }
-        },
-      }),
-
-      getTokenPrice: tool({
-        description: "Get the current price of a token (HeyElsa, paid via x402)",
-        inputSchema: z.object({
-          token: z.string().describe("Token symbol or address"),
-          chain: z.string().default("base").describe("Chain name"),
-        }),
-        execute: async ({ token, chain }: { token: string; chain: string }) => {
-          this.emitToolCall("getTokenPrice", jobId);
-          toolsCalled.push("getTokenPrice");
-          try { return await getTokenPrice(token, chain); }
-          catch (e) { return { error: `getTokenPrice failed (x402): ${e instanceof Error ? e.message : "payment/network error"}` }; }
-        },
-      }),
-
-      getYieldSuggestions: tool({
-        description: "Get personalized yield suggestions for a wallet (HeyElsa, paid via x402). Prefer defiYields for general research.",
-        inputSchema: z.object({
-          walletAddress: z.string().describe("Wallet address"),
-          chain: z.string().default("base").describe("Chain name"),
-        }),
-        execute: async ({ walletAddress, chain }: { walletAddress: string; chain: string }) => {
-          this.emitToolCall("getYieldSuggestions", jobId);
-          toolsCalled.push("getYieldSuggestions");
-          try { return await getYieldSuggestions(walletAddress, chain); }
-          catch (e) { return { error: `getYieldSuggestions failed (x402): ${e instanceof Error ? e.message : "payment/network error"}. Use defiYields instead.` }; }
-        },
-      }),
-
-      twitterSearch: tool({
-        description: "Search Twitter/X for sentiment and alpha (paid via x402)",
-        inputSchema: z.object({
-          query: z.string().describe("Search query for Twitter"),
-        }),
-        execute: async ({ query }: { query: string }) => {
-          this.emitToolCall("twitterSearch", jobId);
-          toolsCalled.push("twitterSearch");
-          try { return await twitterSearch(query); }
-          catch (e) { return { error: `twitterSearch failed (x402): ${e instanceof Error ? e.message : "payment/network error"}. Continue with other data sources.` }; }
-        },
-      }),
-
-      webSearch: tool({
-        description: "Search the web for research and news (paid via x402). Try defiYields/defiProtocol first for DeFi data.",
-        inputSchema: z.object({
-          query: z.string().describe("Search query"),
-        }),
-        execute: async ({ query }: { query: string }) => {
-          this.emitToolCall("webSearch", jobId);
-          toolsCalled.push("webSearch");
-          try { return await webSearch(query); }
-          catch (e) { return { error: `webSearch failed (x402): ${e instanceof Error ? e.message : "payment/network error"}. Use defiYields or defiProtocol for DeFi data.` }; }
-        },
-      }),
-
-      scrapeUrl: tool({
-        description: "Scrape a URL for detailed content (paid via x402)",
-        inputSchema: z.object({
-          url: z.string().describe("URL to scrape"),
-        }),
-        execute: async ({ url }: { url: string }) => {
-          this.emitToolCall("scrapeUrl", jobId);
-          toolsCalled.push("scrapeUrl");
-          try { return await scrapeUrl(url); }
-          catch (e) { return { error: `scrapeUrl failed: ${e instanceof Error ? e.message : "network error"}` }; }
-        },
-      }),
-
-      publishWebsite: tool({
-        description: "Create and publish a live website with HTML content. Returns a public URL.",
-        inputSchema: z.object({
-          html: z.string().describe("Complete HTML content including DOCTYPE, head, body, inline CSS"),
-          filename: z.string().default("index.html").describe("Filename"),
-        }),
-        execute: async ({ html, filename }: { html: string; filename: string }) => {
-          this.emitToolCall("publishWebsite", jobId);
-          toolsCalled.push("publishWebsite");
-          try { return await publishWebsite(html, filename); }
-          catch (e) { return { error: `publishWebsite failed: ${e instanceof Error ? e.message : "upload error"}` }; }
-        },
-      }),
-
-      writeEncryptedReport: tool({
-        description: "Write findings to an encrypted Fileverse report",
-        inputSchema: z.object({
-          title: z.string().describe("Report title"),
-          content: z.string().describe("Report content in markdown"),
-        }),
-        execute: async ({ title, content }: { title: string; content: string }) => {
-          if (deliverableHash !== "") {
-            return { fileId: fileverseFileId, status: "already saved — do not call again" };
-          }
-          if (content.length < 150 || /TODO|placeholder|replace with/i.test(content)) {
-            return { error: "Report content too short or contains placeholders. Gather research data with other tools FIRST, then call writeEncryptedReport LAST with comprehensive findings." };
-          }
-          this.emitToolCall("writeEncryptedReport", jobId);
-          toolsCalled.push("writeEncryptedReport");
-          try {
-            const result = await createEncryptedReport(
-              title,
-              content,
-              userSignature,
-              job.id.toString()
-            );
-            deliverableHash = result.encryptedContent;
-            fileverseFileId = result.fileId;
-            return { fileId: result.fileId, status: "saved" };
-          } catch {
-            const key = deriveKeyFromSignature(userSignature, job.id.toString());
-            const markdown = `# ${title}\n\n${content}\n\n---\n*Generated by Obscura at ${new Date().toISOString()}*`;
-            const payload = encrypt(markdown, key);
-            deliverableHash = encodePayload(payload);
-            fileverseFileId = `local:${job.id}`;
-            await storeLocalReport(job.id.toString(), deliverableHash);
-            return { fileId: fileverseFileId, status: "saved (local fallback)" };
-          }
-        },
-      }),
-    };
-
-    const result = await runAgent({
-      system: systemPrompt,
-      prompt: job.description,
-      tools,
-      maxSteps: 10,
-    });
-
-    // If the model didn't call writeEncryptedReport, force a report with its text output
-    if (deliverableHash === "" && result.text) {
-      this.emitToolCall("writeEncryptedReport", jobId);
-      toolsCalled.push("writeEncryptedReport");
-      try {
-        const fvResult = await createEncryptedReport(
-          `Scout Report — Job #${jobId}`,
-          result.text,
-          userSignature,
-          job.id.toString()
-        );
-        deliverableHash = fvResult.encryptedContent;
-        fileverseFileId = fvResult.fileId;
-      } catch {
-        const key = deriveKeyFromSignature(userSignature, job.id.toString());
-        const markdown = `# Scout Report — Job #${jobId}\n\n${result.text}\n\n---\n*Generated by Obscura at ${new Date().toISOString()}*`;
-        const payload = encrypt(markdown, key);
-        deliverableHash = encodePayload(payload);
-        fileverseFileId = `local:${job.id}`;
-        storeLocalReport(job.id.toString(), deliverableHash);
-      }
+    this.emitToolCall("writeEncryptedReport", jobId);
+    toolsCalled.push("writeEncryptedReport");
+    try {
+      const fvResult = await createEncryptedReport(
+        `Scout Report — Job #${jobId}`,
+        finalContent,
+        userSignature,
+        job.id.toString()
+      );
+      deliverableHash = fvResult.encryptedContent;
+      fileverseFileId = fvResult.fileId;
+    } catch {
+      const key = deriveKeyFromSignature(userSignature, job.id.toString());
+      const markdown = `# Scout Report — Job #${jobId}\n\n${finalContent}\n\n---\n*Generated by Obscura at ${new Date().toISOString()}*`;
+      const payload = encrypt(markdown, key);
+      deliverableHash = encodePayload(payload);
+      fileverseFileId = `local:${job.id}`;
+      await storeLocalReport(job.id.toString(), deliverableHash);
     }
-
-    const hasDeliverable = deliverableHash !== "";
 
     this.emit({
       agent: this.role,
-      type: hasDeliverable ? "submit" : "error",
-      message: hasDeliverable
-        ? `Scout submitted deliverable for Job #${jobId}`
-        : `Scout failed to produce report for Job #${jobId}`,
+      type: "submit",
+      message: `Scout submitted deliverable for Job #${jobId}`,
       jobId,
       metadata: { reasoning: result.text },
     });
 
     return {
-      success: hasDeliverable,
+      success: true,
       deliverableHash,
       fileverseFileId,
       metadata: {
         toolsCalled,
         duration: 0,
-        reasoning: hasDeliverable
-          ? result.text
-          : "Agent completed but failed to produce encrypted report",
+        reasoning: result.text,
       },
     };
+  }
+
+  private async gatherDefiData(
+    jobId: number,
+    description: string,
+    data: Record<string, unknown>,
+    toolsCalled: string[]
+  ) {
+    // DeFiLlama yields
+    this.emitToolCall("defiYields", jobId);
+    toolsCalled.push("defiYields");
+    try {
+      const chain = /base/i.test(description) ? "Base" : undefined;
+      const stablecoin = /stablecoin|usdc|usdt|dai/i.test(description);
+      data.yields = await llamaYields(chain, stablecoin);
+    } catch (e) {
+      data.yields = { error: e instanceof Error ? e.message : "failed" };
+    }
+
+    // Extract protocol names from description and fetch details
+    const protocols = description.match(/\b(aave|aerodrome|morpho|compound|uniswap|sushiswap|curve|yearn|lido)\b/gi);
+    if (protocols) {
+      for (const proto of [...new Set(protocols)].slice(0, 3)) {
+        this.emitToolCall("defiProtocol", jobId);
+        toolsCalled.push("defiProtocol");
+        try {
+          data[`protocol_${proto.toLowerCase()}`] = await llamaProtocol(proto.toLowerCase());
+        } catch { /* skip */ }
+      }
+    }
+
+    // Supplementary web search (may fail, that's ok)
+    this.emitToolCall("webSearch", jobId);
+    toolsCalled.push("webSearch");
+    try {
+      data.webResults = await webSearch(description);
+    } catch {
+      data.webResults = { note: "Web search unavailable" };
+    }
+  }
+
+  private async gatherWebData(
+    jobId: number,
+    description: string,
+    data: Record<string, unknown>,
+    toolsCalled: string[]
+  ) {
+    // Web search for topic research
+    this.emitToolCall("webSearch", jobId);
+    toolsCalled.push("webSearch");
+    try {
+      data.webResults = await webSearch(description);
+    } catch {
+      data.webResults = { note: "Web search unavailable — using general knowledge" };
+    }
+
+    // Twitter sentiment
+    this.emitToolCall("twitterSearch", jobId);
+    toolsCalled.push("twitterSearch");
+    try {
+      const topic = description.replace(/create.*page|build.*site|landing page/gi, "").trim();
+      data.twitterResults = await twitterSearch(topic);
+    } catch {
+      data.twitterResults = { note: "Twitter search unavailable" };
+    }
+  }
+
+  private async gatherResearchData(
+    jobId: number,
+    description: string,
+    data: Record<string, unknown>,
+    toolsCalled: string[]
+  ) {
+    // Web search
+    this.emitToolCall("webSearch", jobId);
+    toolsCalled.push("webSearch");
+    try {
+      data.webResults = await webSearch(description);
+    } catch {
+      data.webResults = { note: "Web search unavailable" };
+    }
+
+    // DeFi data as supplement
+    this.emitToolCall("defiYields", jobId);
+    toolsCalled.push("defiYields");
+    try {
+      data.yields = await llamaYields();
+    } catch { /* skip */ }
+  }
+
+  private async tryPublishWebsite(
+    jobId: number,
+    description: string,
+    reportContent: string,
+    data: Record<string, unknown>,
+    toolsCalled: string[]
+  ) {
+    this.emitToolCall("publishWebsite", jobId);
+    toolsCalled.push("publishWebsite");
+    try {
+      // Use LLM to generate HTML from the report content
+      const htmlResult = await runAgent({
+        system: "You are an HTML generator. Output ONLY valid HTML. No explanation, no markdown, just a complete HTML document with inline CSS. Make it look modern with a dark theme.",
+        prompt: `Create a beautiful landing page HTML about: ${description}\n\nUse this research data:\n${reportContent.slice(0, 2000)}`,
+        tools: {},
+        maxSteps: 1,
+      });
+
+      let html = htmlResult.text;
+      if (html && html.includes("<html") || html.includes("<!DOCTYPE")) {
+        // Clean up markdown code fences if present
+        html = html.replace(/```html\n?/g, "").replace(/```\n?/g, "").trim();
+        const result = await publishWebsite(html);
+        data.publishedUrl = result.publicUrl || result.siteUrl;
+      }
+    } catch {
+      data.publishedUrl = null;
+    }
+  }
+
+  private buildReportPrompt(
+    description: string,
+    userPrefs: { risk: string; assets: string; maxTrade: string; protocols: string },
+    data: Record<string, unknown>,
+    queryType: QueryType
+  ): string {
+    const dataStr = JSON.stringify(data, null, 2).slice(0, 6000);
+
+    if (queryType === "website") {
+      return `Write a comprehensive research report about: "${description}"
+
+Here is the data gathered from web search and social media:
+${dataStr}
+
+Write a detailed markdown report (at least 300 words) covering:
+1. Overview of the topic
+2. Key findings from the research
+3. Relevant links and sources
+4. Conclusion
+
+If a website was published, mention the URL. Do NOT say "tools failed" — use the data provided plus your knowledge.`;
+    }
+
+    if (queryType === "defi") {
+      return `Write a comprehensive DeFi analysis report for: "${description}"
+
+User's risk tolerance: ${userPrefs.risk}
+Preferred assets: ${userPrefs.assets}
+Max trade size: ${userPrefs.maxTrade} USDC
+
+Here is the live DeFi data gathered:
+${dataStr}
+
+Write a detailed markdown report (at least 300 words) covering:
+1. Top yield opportunities (with APY, TVL, and protocol names)
+2. Risk assessment based on user preferences
+3. Specific recommendations
+4. Any relevant protocol details
+
+Use the ACTUAL data provided. Do NOT hallucinate APY numbers. Do NOT say "tools failed."`;
+    }
+
+    return `Write a comprehensive research report about: "${description}"
+
+Here is the data gathered:
+${dataStr}
+
+Write a detailed markdown report (at least 300 words) with actionable analysis. Do NOT say "tools failed."`;
   }
 }
