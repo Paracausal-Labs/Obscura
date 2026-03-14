@@ -7,9 +7,10 @@ export async function GET() {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     start(controller) {
-      // Send existing log
+      // Send last 50 events from log (not the full history)
       const log = orchestrator.getActivityLog();
-      for (const event of log) {
+      const recent = log.slice(-50);
+      for (const event of recent) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
       }
 
