@@ -265,7 +265,7 @@ export function CreateJob() {
                       </button>
                       <div
                         id="sample-prompts"
-                        className="hidden absolute right-0 top-full mt-2 w-80 rounded-xl border border-white/[0.06] bg-[#0a0b10] shadow-2xl shadow-black/50 z-50 overflow-hidden"
+                        className="hidden absolute right-0 top-full mt-2 w-80 max-h-64 rounded-xl border border-white/[0.06] bg-[#0a0b10] shadow-2xl shadow-black/50 z-50 overflow-y-auto overscroll-contain"
                       >
                         {[
                           { label: "Yield Research", prompt: "Find me the best yield opportunities for USDC on Base" },
