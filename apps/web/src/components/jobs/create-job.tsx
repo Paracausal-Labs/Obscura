@@ -188,6 +188,7 @@ export function CreateJob() {
         ...agentJobsConfig,
         functionName: "fund",
         args: [jobId, budgetBigInt],
+        gas: BigInt(200_000),
       });
       await publicClient.waitForTransactionReceipt({ hash: fundHash });
 

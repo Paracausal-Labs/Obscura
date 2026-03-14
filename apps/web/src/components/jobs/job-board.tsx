@@ -34,21 +34,27 @@ export function JobBoard() {
 
   const jobs = Array.from(jobMap.entries())
     .map(([jobId, evts]) => {
-      // The pickup event has the actual worker agent; settle events come from Sentinel
-      const pickupEvent = evts.find((e) => e.type === "pickup");
-      const workerAgent = pickupEvent?.agent ?? evts[evts.length - 1].agent;
+      // The orchestrator's pickup event carries metadata.client; agent pickups don't
+      const orchestratorPickup = evts.find(
+        (e) => e.type === "pickup" && e.metadata?.client
+      );
+      const workerAgent =
+        orchestratorPickup?.agent ??
+        evts.find((e) => e.type === "pickup" && e.agent !== "sentinel")?.agent ??
+        evts[evts.length - 1].agent;
       // Find fileverse report ID from submit event metadata
       const submitEvent = evts.find(
         (e) => e.type === "submit" && e.metadata?.fileverseFileId
       );
       const fileId = submitEvent?.metadata?.fileverseFileId as string | undefined;
-      const clientAddress = pickupEvent?.metadata?.client as string | undefined;
+      const clientAddress = orchestratorPickup?.metadata?.client as string | undefined;
+      const settledEvent = evts.find((e) => SETTLED_TYPES.has(e.type));
       return {
         jobId,
         latestEvent: evts[0],
         agent: workerAgent,
-        status: evts[0].type,
-        isSettled: evts.some((e) => SETTLED_TYPES.has(e.type)),
+        status: settledEvent?.type ?? evts[0].type,
+        isSettled: !!settledEvent,
         fileId,
         clientAddress,
       };

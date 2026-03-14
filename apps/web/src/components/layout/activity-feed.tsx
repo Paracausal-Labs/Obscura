@@ -45,7 +45,7 @@ export function ActivityFeed() {
         </p>
         <h3 className="text-lg font-light text-white tracking-tight">Live Activity</h3>
       </div>
-      <ScrollArea className="h-64">
+      <ScrollArea className="h-[400px]">
         <div className="p-4 space-y-2">
           {events.length === 0 && (
             <p className="text-xs text-zinc-600 text-center py-8">
