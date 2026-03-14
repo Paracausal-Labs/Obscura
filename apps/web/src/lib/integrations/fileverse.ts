@@ -67,16 +67,16 @@ export async function createEncryptedReport(
   const payload = encrypt(markdown, key);
   const encoded = encodePayload(payload);
 
-  // Try Fileverse REST API first
+  // Try Fileverse REST API first, then agents SDK
   if (getApiConfig()) {
-    const result = await apiCreateDocument(
-      `[Obscura] ${title}`,
-      encoded
-    );
-    return { fileId: `ddoc:${result.ddocId}`, encryptedContent: encoded };
+    try {
+      const result = await apiCreateDocument(`[Obscura] ${title}`, encoded);
+      return { fileId: `ddoc:${result.ddocId}`, encryptedContent: encoded };
+    } catch {
+      // REST API unavailable — fall through to agents SDK
+    }
   }
 
-  // Fallback: old @fileverse/agents SDK
   const agent = await getFileverseAgent();
   const report = await agent.create(encoded);
   return { fileId: report.fileId, encryptedContent: encoded };
