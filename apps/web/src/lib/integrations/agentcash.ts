@@ -1,12 +1,65 @@
 import axios, { type AxiosInstance } from "axios";
 import { withPaymentInterceptor, createSigner } from "x402-axios";
 
+const CHAIN_ID_TO_NETWORK: Record<string, string> = {
+  "eip155:8453": "base",
+  "eip155:84532": "base-sepolia",
+  "eip155:1": "ethereum",
+  "eip155:137": "polygon",
+};
+
 async function createX402Client(baseURL: string): Promise<AxiosInstance> {
   const privateKey = process.env.PAYMENT_PRIVATE_KEY;
   if (!privateKey) throw new Error("PAYMENT_PRIVATE_KEY not set");
 
   const signer = await createSigner("base", privateKey as `0x${string}`);
-  return withPaymentInterceptor(axios.create({ baseURL }), signer);
+  const client = axios.create({ baseURL });
+
+  // Patch: x402 v2 servers send payment requirements in the payment-required
+  // header (base64 JSON) with a nested resource object and eip155 network IDs.
+  // x402-axios expects flat PaymentRequirements in response.data.accepts with
+  // short network names. This interceptor bridges the two formats.
+  client.interceptors.response.use(undefined, (error) => {
+    if (error.response?.status === 402) {
+      let paymentData = error.response.data;
+
+      // If body is empty, decode from header
+      if (!paymentData || (typeof paymentData === "string" && paymentData.length === 0)) {
+        const header = error.response.headers["payment-required"];
+        if (header) {
+          try {
+            paymentData = JSON.parse(Buffer.from(header, "base64").toString("utf-8"));
+          } catch {
+            return Promise.reject(error);
+          }
+        }
+      }
+
+      // Transform v2 format: merge top-level resource into each accepts entry
+      if (paymentData?.accepts && paymentData?.resource) {
+        const resource = paymentData.resource;
+        paymentData.accepts = paymentData.accepts
+          .filter((a: Record<string, unknown>) => {
+            const net = a.network as string;
+            // Only keep entries for networks we can pay on
+            return net === "base" || net === "eip155:8453" || CHAIN_ID_TO_NETWORK[net] === "base";
+          })
+          .map((a: Record<string, unknown>) => ({
+            ...a,
+            network: CHAIN_ID_TO_NETWORK[a.network as string] ?? a.network,
+            maxAmountRequired: a.maxAmountRequired ?? a.amount,
+            resource: resource.url ?? baseURL,
+            description: resource.description ?? "",
+            mimeType: resource.mimeType ?? "application/json",
+          }));
+      }
+
+      error.response.data = paymentData;
+    }
+    return Promise.reject(error);
+  });
+
+  return withPaymentInterceptor(client, signer);
 }
 
 let _enrichClient: AxiosInstance | null = null;
@@ -52,7 +105,6 @@ export async function publishWebsite(html: string, filename: string = "index.htm
     contentType: "text/html",
     tier: "10mb",
   });
-  // Upload HTML to pre-signed S3 URL — must use plain axios, not x402 client
   await axios.put(data.uploadUrl, html, {
     headers: { "Content-Type": "text/html" },
   });
