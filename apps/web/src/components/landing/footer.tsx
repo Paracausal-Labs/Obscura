@@ -16,7 +16,7 @@ const navLinks = {
   ],
   company: [
     { label: "About", href: "#" },
-    { label: "Contact", href: "#" },
+    { label: "Contact", href: "mailto:paracausal.labs@gmail.com" },
   ],
 };
 
@@ -148,7 +148,7 @@ export function Footer() {
           </div>
           <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-zinc-700 text-xs">
-              &copy; 2025 Obscura. All rights reserved.
+              &copy; 2026 Obscura. All rights reserved.
             </p>
             <div className="flex items-center gap-1 text-zinc-700 text-xs flex-wrap justify-center">
               <span className="mr-1">Infrastructure:</span>

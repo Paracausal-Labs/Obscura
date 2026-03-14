@@ -2,6 +2,10 @@
   "name": "obscura",
   "private": true,
   "packageManager": "pnpm@10.23.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",

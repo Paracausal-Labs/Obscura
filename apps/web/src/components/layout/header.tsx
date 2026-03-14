@@ -2,6 +2,7 @@
 
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEnsIdentity } from "@/hooks/useEnsIdentity";
 
@@ -22,9 +23,20 @@ export function Header() {
     <header className="border-b border-white/[0.06] bg-[#07080a]/90 backdrop-blur-xl sticky top-0 z-50">
       <div className="flex items-center justify-between px-4 md:px-6 h-14 md:h-16">
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-[#ff0033] text-xl">{"\u25C8"}</span>
-            <span className="font-bold text-lg tracking-[0.1em] uppercase text-white">OBSCURA</span>
+          <Link href="/" className="flex items-center gap-2.5">
+            <Image
+              src="/logo.png"
+              alt="Obscura"
+              width={32}
+              height={32}
+              className="rounded-sm"
+            />
+            <span
+              className="text-lg lg:text-xl font-bold tracking-[0.2em] text-white uppercase"
+              style={{ fontFamily: "Impact, 'Arial Black', sans-serif" }}
+            >
+              OBSCURA
+            </span>
           </Link>
           <nav className="hidden md:flex items-center gap-1">
             {NAV_ITEMS.map((item) => (
