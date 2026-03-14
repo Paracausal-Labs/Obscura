@@ -144,6 +144,9 @@ User preferences (from ENS text records):
           content: z.string().describe("Report content in markdown"),
         }),
         execute: async ({ title, content }: { title: string; content: string }) => {
+          if (deliverableHash !== "") {
+            return { fileId: fileverseFileId, status: "already saved — do not call again" };
+          }
           this.emitToolCall("writeEncryptedReport", jobId);
           toolsCalled.push("writeEncryptedReport");
           try {

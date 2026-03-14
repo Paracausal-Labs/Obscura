@@ -90,8 +90,9 @@ Write execution confirmations to an encrypted Fileverse report.`,
 export function classifyJobAgent(description: string): AgentRole {
   const lower = description.toLowerCase();
   if (/website|create.*site|build.*page|publish|make.*page/.test(lower)) return AgentRole.Scout;
-  // Analyst check before Ghost so "analyze the swap" routes to Analyst, not Ghost
-  if (/analy|portfolio|pnl|p&l|audit|wallet/.test(lower)) return AgentRole.Analyst;
+  // Analyst only for wallet/portfolio-specific analysis, not protocol research
+  if (/portfolio|pnl|p&l|audit|analy\w*\s+(my\s+)?wallet/.test(lower)) return AgentRole.Analyst;
   if (/swap|trade|execute|buy|sell|deposit/.test(lower)) return AgentRole.Ghost;
+  // Scout handles everything else: yield, protocol research, general analysis
   return AgentRole.Scout;
 }
