@@ -1,7 +1,6 @@
 "use client";
 
-import { useReadContract } from "wagmi";
-import { pad, stringToHex } from "viem";
+import { useReadContract, useAccount } from "wagmi";
 import { Badge } from "@/components/ui/badge";
 import type { AgentMetadata } from "@obscura/shared";
 import { useEnsAgentVerification } from "@/hooks/useEnsIdentity";
@@ -13,18 +12,18 @@ interface AgentCardProps {
 
 export function AgentCard({ agent }: AgentCardProps) {
   const { verified, protocol } = useEnsAgentVerification(agent.ensName);
-
-  const tag1 = pad(stringToHex("obscura.job"), { size: 32 });
-  const tag2 = pad(stringToHex(agent.role), { size: 32 });
+  const { address } = useAccount();
 
   const { data: reputationData } = useReadContract({
     ...reputationConfig,
     functionName: "getSummary",
-    args: [BigInt(agent.id), [], tag1, tag2],
+    args: [BigInt(agent.id), address ? [address] : [], "obscura.job", agent.role],
+    query: { enabled: !!address },
   });
 
-  const avgScore = reputationData ? Number(reputationData[0]) : 0;
-  const jobCount = reputationData ? Number(reputationData[1]) : 0;
+  // getSummary returns (uint64 count, int128 summaryValue, uint8 summaryValueDecimals)
+  const jobCount = reputationData ? Number(reputationData[0]) : 0;
+  const avgScore = reputationData ? Number(reputationData[1]) : 0;
   const displayScore = jobCount > 0 ? Math.min(avgScore, 100) : 0;
 
   return (

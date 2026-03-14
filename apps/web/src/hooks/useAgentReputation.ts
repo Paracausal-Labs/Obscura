@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { pad, stringToHex } from "viem";
+import { useAccount } from "wagmi";
 import { getBaseSepoliaClient } from "@/lib/config/chains";
 import { reputationConfig } from "@/lib/contracts/reputation";
 import { AGENTS } from "@/lib/config/agents";
@@ -18,30 +18,30 @@ interface ReputationData {
 export function useAgentReputation() {
   const [reputations, setReputations] = useState<ReputationData[]>([]);
   const [loading, setLoading] = useState(true);
+  const { address } = useAccount();
 
   const fetchReputations = useCallback(async () => {
     try {
       setLoading(true);
       const client = getBaseSepoliaClient();
+      // getSummary requires at least one client address
+      const clientAddresses = address ? [address] : [];
 
       const results = await Promise.allSettled(
         Object.values(AGENTS).map(async (agent) => {
-          const tag1 = pad(stringToHex("obscura.job"), { size: 32 });
-          const tag2 = pad(stringToHex(agent.role), { size: 32 });
-
           try {
             const result = await client.readContract({
               ...reputationConfig,
               functionName: "getSummary",
-              args: [BigInt(agent.id), [], tag1, tag2],
-            }) as [bigint, bigint];
+              args: [BigInt(agent.id), clientAddresses, "obscura.job", agent.role],
+            }) as [bigint, bigint, number];
 
             return {
               agentId: agent.id,
               role: agent.role,
               name: agent.name,
-              avgScore: Number(result[0]),
-              reviewCount: Number(result[1]),
+              avgScore: Number(result[1]),
+              reviewCount: Number(result[0]),
             };
           } catch {
             return {
@@ -74,7 +74,7 @@ export function useAgentReputation() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [address]);
 
   useEffect(() => { fetchReputations(); }, [fetchReputations]);
 

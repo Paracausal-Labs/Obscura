@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWriteContract, usePublicClient } from "wagmi";
-import { stringToHex, pad, keccak256, toHex } from "viem";
+import { keccak256, toHex } from "viem";
 import { Button } from "@/components/ui/button";
 import { reputationConfig } from "@/lib/contracts/reputation";
 import { AGENTS } from "@/lib/config/agents";
@@ -36,8 +36,6 @@ export function RateAgent({ jobId, agentRole, onRated }: RateAgentProps) {
 
     try {
       setStatus("signing");
-      const tag1 = pad(stringToHex("obscura.job"), { size: 32 });
-      const tag2 = pad(stringToHex(agentRole), { size: 32 });
 
       const hash = await writeContractAsync({
         ...reputationConfig,
@@ -46,8 +44,8 @@ export function RateAgent({ jobId, agentRole, onRated }: RateAgentProps) {
           BigInt(agentMeta.id),
           BigInt(selectedScore),
           0,
-          tag1,
-          tag2,
+          "obscura.job",
+          agentRole,
           `job/${jobId}`,
           `User rating for job #${jobId}`,
           keccak256(toHex(`user-rating-${jobId}`)),

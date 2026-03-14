@@ -1,4 +1,4 @@
-import { keccak256, toHex, stringToHex, pad } from "viem";
+import { keccak256, toHex } from "viem";
 import { AgentRole } from "@obscura/shared";
 import type { ActivityEvent, AgentResult, Job } from "@obscura/shared";
 import type { AgentContext, ActivityEmitter, OrchestratorState } from "./types";
@@ -167,7 +167,7 @@ class Orchestrator {
       };
     }
 
-    // Write ERC-8004 reputation feedback on-chain
+    // Write ERC-8004 reputation feedback on-chain (sentinel rates the worker agent)
     const repTx = await this.writeReputation(job, sentinelResult, assignedRole, jobId);
 
     // Clean up active job tracking
@@ -264,7 +264,7 @@ class Orchestrator {
   }
 
   private async writeReputation(
-    job: Job,
+    _job: Job,
     sentinelResult: AgentResult,
     providerRole: AgentRole,
     jobId: number
@@ -275,8 +275,6 @@ class Orchestrator {
 
       const agentMeta = AGENTS[providerRole];
       const score = sentinelResult.success ? 100n : 0n;
-      const tag1 = pad(stringToHex("obscura.job"), { size: 32 });
-      const tag2 = pad(stringToHex(providerRole), { size: 32 });
 
       const hash = await walletClient.writeContract({
         ...reputationConfig,
@@ -285,8 +283,8 @@ class Orchestrator {
           BigInt(agentMeta.id),
           score,
           0,
-          tag1,
-          tag2,
+          "obscura.job",
+          providerRole,
           `job/${jobId}`,
           sentinelResult.metadata.reasoning,
           keccak256(toHex(sentinelResult.deliverableHash || "none")),
