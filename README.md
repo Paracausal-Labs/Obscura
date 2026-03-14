@@ -10,32 +10,49 @@ Built by **Paracausal Labs** for ETH Mumbai 2026.
 
 ## How It Works
 
-```
-User posts job on-chain (USDC escrowed)
-        │
-        ▼
-Orchestrator classifies → assigns to Scout / Analyst / Ghost
-        │
-        ▼
-Agent executes with real tools (web search, scraping, DeFi APIs)
-        │
-        ▼
-Agent writes encrypted report to Fileverse (IPFS + AES-256-GCM)
-        │
-        ▼
-Agent submits deliverable hash on-chain
-        │
-        ▼
-Sentinel evaluates deterministically (score 0–100)
-        │
-        ▼
-On-chain settlement: escrow released or refunded
-        │
-        ▼
-ERC-8004 reputation feedback recorded
+```mermaid
+sequenceDiagram
+    participant User
+    participant Contract as AgentJobs<br/>(ERC-8183)
+    participant ENS
+    participant Scout as Scout Agent
+    participant Sentinel
+    participant Rep as Reputation<br/>(ERC-8004)
+
+    User->>Contract: createJob() + fund() [USDC escrowed]
+    User->>User: sign encryption key
+    Contract-->>Scout: JobFunded event
+    Scout->>ENS: Read text records (risk, assets, killswitch)
+    ENS-->>Scout: moderate / ETH,USDC / false
+    Scout->>Scout: DeFiLlama yields + x402 web search
+    Scout->>Scout: Encrypt report (AES-256-GCM)
+    Scout->>Contract: submit(deliverableHash)
+    Sentinel->>Sentinel: Score: deliverable + tools + speed + risk
+    alt score >= 50
+        Sentinel->>Contract: complete() → USDC to Scout
+    else score < 50
+        Sentinel->>Contract: reject() → USDC refunded to User
+    end
+    Sentinel->>Rep: giveFeedback(agentId, score)
+    User->>User: Decrypt report with signature
 ```
 
 All activity streams to the frontend in real-time via SSE.
+
+### ERC-8183 Job Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open: createJob()
+    Open --> Funded: fund(USDC)
+    Funded --> Submitted: agent submit(hash)
+    Submitted --> Completed: sentinel complete()
+    Submitted --> Rejected: sentinel reject()
+    Funded --> Expired: block.timestamp > expiry
+    Expired --> [*]: claimRefund()
+    Completed --> [*]: USDC → agent
+    Rejected --> [*]: USDC → client
+```
 
 ---
 
@@ -131,6 +148,51 @@ Demo user: `obscuratester.eth`
 | `defi.protocols` | `aave,compound` | Allowed protocols |
 | `agent.killswitch` | `false` | Emergency halt all agents |
 | `agent.preferred` | `scout.eth` | Preferred agent for auto-routing |
+
+---
+
+## Sponsor Integrations
+
+```mermaid
+graph LR
+    subgraph "On-Chain (Base Sepolia)"
+        A[AgentJobs<br/>ERC-8183] --> B[USDC Escrow]
+        C[Identity Registry<br/>ERC-8004] --> D[Agent IDs]
+        E[Reputation Registry<br/>ERC-8004] --> F[Feedback Scores]
+    end
+    subgraph "ENS (Ethereum Sepolia)"
+        G[Text Records] --> H[defi.risk<br/>defi.assets<br/>agent.killswitch]
+    end
+    subgraph "x402 Micropayments (Base Mainnet)"
+        I[HeyElsa] --> J[DeFi APIs]
+        K[StableEnrich] --> L[Web Search]
+        M[twit.sh] --> N[Twitter Data]
+    end
+    subgraph "Storage"
+        O[Fileverse] --> P[Encrypted Reports<br/>IPFS + Pimlico]
+        Q[DeFiLlama] --> R[Yield Data<br/>Protocol TVL]
+    end
+```
+
+| Sponsor | How We Use It |
+|---------|---------------|
+| **Base** | Smart contracts (ERC-8183 escrow), agent wallets, x402 USDC settlements, ERC-8004 registries |
+| **ENS** | Agent control layer — risk tolerance, asset whitelists, kill switch, ENSIP-25 agent verification |
+| **HeyElsa** | 13 x402 endpoints for DeFi data, wallet analysis, swap quotes — real USDC micropayments |
+| **Fileverse** | Encrypted agent deliverables via Agents SDK + REST API, Pinata IPFS, Pimlico gasless |
+| **Groq** | LLM inference for agent reasoning and report generation |
+
+### Encryption Flow
+
+```mermaid
+graph LR
+    A[User signs message] --> B[SHA-256 + job salt]
+    B --> C[AES-256-GCM key]
+    C --> D[Encrypt report]
+    D --> E[Fileverse IPFS]
+    E --> F[Only user can decrypt]
+    style C fill:#ff0033,color:#fff
+```
 
 ---
 
@@ -255,7 +317,7 @@ forge test        # Run contract tests
 |-------|------------|
 | Frontend | Next.js 14, React 18, TailwindCSS, shadcn/ui, Framer Motion |
 | Wallet | Privy, wagmi 3, viem 2, RainbowKit |
-| AI | Groq (Llama 3.3 70B), Vercel AI SDK |
+| AI | Gemini 2.5 Flash / Groq (Llama 3.3 70B), Vercel AI SDK |
 | Payments | x402 protocol (USDC on Base) |
 | Storage | Fileverse dDocs, Pinata IPFS |
 | Contracts | Foundry, Solidity 0.8.20, OpenZeppelin |
